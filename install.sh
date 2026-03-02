@@ -25,13 +25,16 @@ echo "  🧛 Count Tongula's Eye Break Reminder"
 echo "  ─────────────────────────────────────"
 echo ""
 
-# ── Install scripts ──
-info "Installing to $INSTALL_DIR ..."
+# ── Symlink scripts (git pull = instant update) ──
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+info "Symlinking to $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR"
-cp scripts/eye_break.sh "$INSTALL_DIR/"
-cp scripts/eye_break_daemon.sh "$INSTALL_DIR/"
-chmod +x "$INSTALL_DIR/"*.sh
-ok "Scripts installed"
+for script in "$REPO_DIR/scripts/"*.sh; do
+    target="$INSTALL_DIR/$(basename "$script")"
+    rm -f "$target"
+    ln -s "$script" "$target"
+done
+ok "Scripts symlinked → $REPO_DIR/scripts/"
 
 # ── Create LaunchAgent ──
 info "Setting up LaunchAgent ..."

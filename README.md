@@ -31,6 +31,13 @@ cd eye-break-reminder
 
 That's it. Count Tongula will start watching over your eyes immediately and on every login.
 
+Scripts are symlinked, so pulling updates takes effect immediately:
+
+```bash
+cd eye-break-reminder
+git pull
+```
+
 ## Uninstall
 
 ```bash
