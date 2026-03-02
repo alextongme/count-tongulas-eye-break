@@ -34,18 +34,21 @@ swiftc -O -o "$REPO_DIR/scripts/eye_break_ui" "$REPO_DIR/scripts/eye_break_ui.sw
     -framework Cocoa 2>&1
 ok "Binary compiled"
 
-# ── Symlink scripts (git pull = instant update) ──
-info "Symlinking to $INSTALL_DIR ..."
+# ── Install scripts ──
+info "Installing to $INSTALL_DIR ..."
 mkdir -p "$INSTALL_DIR"
+# Copy shell scripts (copies avoid macOS TCC/provenance issues with symlinks)
 for script in "$REPO_DIR/scripts/"*.sh; do
     target="$INSTALL_DIR/$(basename "$script")"
     rm -f "$target"
-    ln -s "$script" "$target"
+    cp "$script" "$target"
 done
 # Symlink the compiled binary
 rm -f "$INSTALL_DIR/eye_break_ui"
 ln -s "$REPO_DIR/scripts/eye_break_ui" "$INSTALL_DIR/eye_break_ui"
-ok "Scripts symlinked → $REPO_DIR/scripts/"
+# Strip macOS quarantine/provenance attributes
+xattr -cr "$INSTALL_DIR" 2>/dev/null || true
+ok "Scripts installed → $INSTALL_DIR"
 
 # ── Symlink assets ──
 info "Symlinking assets ..."
