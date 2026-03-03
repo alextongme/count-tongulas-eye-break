@@ -20,6 +20,11 @@ class SoundManager {
         NSSound(named: NSSound.Name(Preferences.shared.completeSound))?.play()
     }
 
+    func playMilestoneSound() {
+        guard Preferences.shared.soundEnabled else { return }
+        NSSound(named: NSSound.Name("Hero"))?.play()
+    }
+
     func playSound(_ name: String) {
         guard Preferences.shared.soundEnabled else { return }
         NSSound(named: NSSound.Name(name))?.play()

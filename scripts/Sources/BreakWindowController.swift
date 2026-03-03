@@ -51,6 +51,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     var dismissBelowProgress: NSLayoutConstraint!
     var mascotTopFixed: NSLayoutConstraint!
     var countdownCentering: [NSLayoutConstraint] = []
+    var bodyTopConstraint: NSLayoutConstraint!
+    var detailTopConstraint: NSLayoutConstraint!
 
 
     var secondsLeft: Int
@@ -73,7 +75,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
         // Main window
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 460, height: 560),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -227,8 +229,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         NSLayoutConstraint.activate([
             // Mascot
             mascot.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-            mascot.widthAnchor.constraint(equalToConstant: 90),
-            mascot.heightAnchor.constraint(equalToConstant: 90),
+            mascot.widthAnchor.constraint(equalToConstant: 110),
+            mascot.heightAnchor.constraint(equalToConstant: 110),
 
             // Heading
             heading.topAnchor.constraint(equalTo: mascot.bottomAnchor, constant: 20),
@@ -236,12 +238,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             heading.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -32),
 
             // Body
-            body.topAnchor.constraint(equalTo: heading.bottomAnchor, constant: 14),
             body.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 40),
             body.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -40),
 
             // Detail
-            detail.topAnchor.constraint(equalTo: body.bottomAnchor, constant: 14),
             detail.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 40),
             detail.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -40),
 
@@ -275,13 +275,18 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
             // Esc hint
             escHint.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-            escHint.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -8),
+            escHint.topAnchor.constraint(equalTo: dismissBtn.bottomAnchor, constant: 8),
         ])
 
-        // Mascot top: fixed for prompt/complete, flexible for countdown centering
-        mascotTopFixed = mascot.topAnchor.constraint(equalTo: cv.topAnchor, constant: 24)
+        bodyTopConstraint = body.topAnchor.constraint(equalTo: heading.bottomAnchor, constant: 14)
+        detailTopConstraint = detail.topAnchor.constraint(equalTo: body.bottomAnchor, constant: 14)
+        bodyTopConstraint.isActive = true
+        detailTopConstraint.isActive = true
 
-        dismissAtBottom = dismissBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -18)
+        // Mascot top: fixed for prompt/complete, flexible for countdown centering
+        mascotTopFixed = mascot.topAnchor.constraint(equalTo: cv.topAnchor, constant: 32)
+
+        dismissAtBottom = dismissBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -28)
         dismissBelowProgress = dismissBtn.topAnchor.constraint(equalTo: progressBar.bottomAnchor, constant: 40)
 
         // Countdown vertical centering: equal spacers above mascot and below dismiss
@@ -317,7 +322,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         primaryCenterX = primaryBtn.centerXAnchor.constraint(equalTo: cv.centerXAnchor)
     }
 
-    private let fullHeight: CGFloat = 520
+    private let fullHeight: CGFloat = 560
 
     private func resizeWindow(to height: CGFloat) {
         guard let screen = window.screen ?? NSScreen.main else { return }
@@ -334,10 +339,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         let countdownH = countdownLbl.intrinsicContentSize.height
         let subH = countdownSub.intrinsicContentSize.height
         let dismissH = dismissBtn.intrinsicContentSize.height
-        // mascot(90) + gap(20) + heading + gap(20) + countdown + gap(-2) + sub
+        // mascot(110) + gap(20) + heading + gap(20) + countdown + gap(-2) + sub
         // + gap(24) + progress(6) + gap(40) + dismiss
-        let content = 90 + 20 + headingH + 20 + countdownH + (-2) + subH + 24 + 6 + 40 + dismissH
-        return content + 70  // 35px padding top + bottom
+        let content = 110 + 20 + headingH + 20 + countdownH + (-2) + subH + 24 + 6 + 40 + dismissH
+        return content + 90  // 45px padding top + bottom
     }
 
     // MARK: - Animation
@@ -468,16 +473,49 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     }
 
     func showComplete() {
-        SoundManager.shared.playCompleteSound()
-
         timer?.invalidate()
         timer = nil
 
-        heading.stringValue = "Break complete!"
-        heading.textColor = Drac.green
+        let milestoneMsg = Statistics.shared.nextStreakMilestone()
+        let isMilestone = milestoneMsg != nil
 
-        body.stringValue = Quotes.random(Quotes.complete)
-        detail.stringValue = "You may return to your screen."
+        if isMilestone {
+            SoundManager.shared.playMilestoneSound()
+            heading.stringValue = "🏆 Milestone Reached!"
+            heading.textColor = Drac.orange
+            body.stringValue = milestoneMsg!
+            body.textColor = Drac.pink
+            detail.stringValue = "Streak: \(Statistics.shared.nextStreak) breaks"
+            detail.textColor = Drac.yellow
+            bodyTopConstraint.constant = 24
+            detailTopConstraint.constant = 20
+
+            // Purple-tinted background + orange glow border
+            let cv = window.contentView!
+            cv.layer?.backgroundColor = NSColor(srgbRed: 0x30/255.0, green: 0x2B/255.0, blue: 0x44/255.0, alpha: 1).cgColor
+            cv.layer?.borderWidth = 2
+            cv.layer?.borderColor = Drac.orange.cgColor
+            cv.layer?.shadowColor = Drac.orange.cgColor
+            cv.layer?.shadowRadius = 12
+            cv.layer?.shadowOpacity = 0.6
+            cv.layer?.shadowOffset = .zero
+        } else {
+            SoundManager.shared.playCompleteSound()
+            heading.stringValue = "Break complete!"
+            heading.textColor = Drac.green
+            body.stringValue = Quotes.random(Quotes.complete)
+            body.textColor = Drac.foreground
+            detail.stringValue = "You may return to your screen."
+            detail.textColor = Drac.foreground
+            bodyTopConstraint.constant = 14
+            detailTopConstraint.constant = 14
+
+            // Reset to normal background
+            let cv = window.contentView!
+            cv.layer?.backgroundColor = Drac.background.cgColor
+            cv.layer?.borderWidth = 0
+            cv.layer?.shadowOpacity = 0
+        }
 
         body.isHidden = false
         detail.isHidden = false
@@ -502,10 +540,58 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         lottieView?.isHidden = false
         loadRandomAnimation()
 
-        let delay = Preferences.shared.autoQuitDelay
+        let delay = isMilestone ? max(Preferences.shared.autoQuitDelay, 12) : Preferences.shared.autoQuitDelay
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(delay)) { [weak self] in
             self?.finishWithResult(.completed)
         }
+    }
+
+    /// Preview-only: force the milestone complete UI regardless of actual streak
+    func showMilestonePreview() {
+        timer?.invalidate()
+        timer = nil
+
+        SoundManager.shared.playMilestoneSound()
+        heading.stringValue = "🏆 Milestone Reached!"
+        heading.textColor = Drac.orange
+        body.stringValue = Quotes.milestones[5] ?? "5 breaks without fail! The Count promotes you to Familiar."
+        body.textColor = Drac.pink
+        detail.stringValue = "Streak: 5 breaks"
+        detail.textColor = Drac.yellow
+        bodyTopConstraint.constant = 24
+        detailTopConstraint.constant = 20
+
+        let cv = window.contentView!
+        cv.layer?.backgroundColor = NSColor(srgbRed: 0x30/255.0, green: 0x2B/255.0, blue: 0x44/255.0, alpha: 1).cgColor
+        cv.layer?.borderWidth = 2
+        cv.layer?.borderColor = Drac.orange.cgColor
+        cv.layer?.shadowColor = Drac.orange.cgColor
+        cv.layer?.shadowRadius = 12
+        cv.layer?.shadowOpacity = 0.6
+        cv.layer?.shadowOffset = .zero
+
+        body.isHidden = false
+        detail.isHidden = false
+        countdownLbl.isHidden = true
+        countdownSub.isHidden = true
+        progressBar.isHidden = true
+
+        primaryBtn.setLabel("Thanks, Count!")
+        primaryBtn.isHidden = false
+        primaryPaired.isActive = false
+        primaryCenterX.isActive = true
+        secondaryBtn.isHidden = true
+        dismissBtn.isHidden = true
+        escHint.isHidden = true
+        dismissBelowProgress.isActive = false
+        dismissAtBottom.isActive = true
+        NSLayoutConstraint.deactivate(countdownCentering)
+        mascotTopFixed.isActive = true
+
+        resizeWindow(to: fullHeight)
+
+        lottieView?.isHidden = false
+        loadRandomAnimation()
     }
 
     // MARK: - Button Actions

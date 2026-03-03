@@ -38,7 +38,7 @@ class SettingsWindowController: NSObject {
     var preBreakNotifyToggle: NSSwitch!
 
     private let W: CGFloat = 740
-    private let H: CGFloat = 680
+    private let H: CGFloat = 740
     private let colW: CGFloat = 300
     private let leftX: CGFloat = 44
     private let rightX: CGFloat = 396  // 44 + 300 + 52 gap
@@ -46,7 +46,7 @@ class SettingsWindowController: NSObject {
 
     override init() {
         let win = SettingsWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 740, height: 680),
+            contentRect: NSRect(x: 0, y: 0, width: 740, height: 740),
             styleMask: .borderless,
             backing: .buffered,
             defer: false
@@ -57,7 +57,7 @@ class SettingsWindowController: NSObject {
         win.isMovableByWindowBackground = false
         win.hasShadow = true
         win.level = .floating
-        win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 740, height: 680))
+        win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 740, height: 740))
         self.window = win
 
         super.init()
@@ -216,7 +216,7 @@ class SettingsWindowController: NSObject {
         )
         restoreBtn.translatesAutoresizingMaskIntoConstraints = true
         restoreBtn.sizeToFit()
-        restoreBtn.frame = NSRect(x: (W - restoreBtn.frame.width) / 2, y: 20, width: restoreBtn.frame.width, height: 20)
+        restoreBtn.frame = NSRect(x: (W - restoreBtn.frame.width) / 2, y: 30, width: restoreBtn.frame.width, height: 20)
         cv.addSubview(restoreBtn)
     }
 

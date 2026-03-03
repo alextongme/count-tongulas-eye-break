@@ -1,11 +1,15 @@
 import Cocoa
 
 // ── Single-instance guard ────────────────────────────────────────────
-// Acquire an exclusive file lock; exit immediately if another instance holds it.
-let lockFD = open("/tmp/com.counttongula.eyebreak.lock", O_WRONLY | O_CREAT, 0o600)
-if lockFD < 0 || flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
-    fputs("Another instance is already running.\n", stderr)
-    exit(0)
+// Skip lock for development/preview modes so they don't block normal app operation.
+let devModes = ["--gallery", "--demo", "--screenshot", "--screenshot-all", "--screenshot-long", "--trigger-eye", "--trigger-long"]
+let isDevMode = ProcessInfo.processInfo.arguments.contains(where: { devModes.contains($0) })
+if !isDevMode {
+    let lockFD = open("/tmp/com.counttongula.eyebreak.lock", O_WRONLY | O_CREAT, 0o600)
+    if lockFD < 0 || flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
+        fputs("Another instance is already running.\n", stderr)
+        exit(0)
+    }
 }
 
 let app = NSApplication.shared
@@ -145,12 +149,14 @@ if args.contains("--demo") {
     // Gallery mode: arrow keys to cycle through all screens
     print("Gallery mode: → next, ← prev, Esc quit")
 
-    let galleryScreens: [(BreakType, String)] = [
-        (.eye, "prompt"), (.eye, "countdown"), (.eye, "complete"),
-        (.long, "prompt"), (.long, "countdown"), (.long, "complete"),
+    let galleryScreens: [(String, String)] = [
+        ("eye", "prompt"), ("eye", "countdown"), ("eye", "complete"), ("eye", "milestone"),
+        ("long", "prompt"), ("long", "countdown"), ("long", "complete"), ("long", "milestone"),
+        ("settings", "settings"),
     ]
     var galleryIndex = 0
     var galleryCtrl: BreakWindowController?
+    var gallerySettings: SettingsWindowController?
 
     func showGallery() {
         // Clean up previous controller
@@ -158,21 +164,34 @@ if args.contains("--demo") {
         galleryCtrl?.timer = nil
         galleryCtrl?.overlayWindows.forEach { $0.orderOut(nil) }
         galleryCtrl?.window.orderOut(nil)
+        gallerySettings?.window.orderOut(nil)
+        galleryCtrl = nil
+        gallerySettings = nil
 
-        let (type, screen) = galleryScreens[galleryIndex]
-        let ctrl = BreakWindowController(type: type, allowSnooze: true)
+        let (category, screen) = galleryScreens[galleryIndex]
 
-        if screen == "countdown" {
-            ctrl.showCountdown()
-            ctrl.timer?.invalidate()
-            ctrl.timer = nil
-        } else if screen == "complete" {
-            ctrl.showComplete()
+        if category == "settings" {
+            let settings = SettingsWindowController()
+            settings.window.makeKeyAndOrderFront(nil)
+            gallerySettings = settings
+        } else {
+            let type: BreakType = category == "long" ? .long : .eye
+            let ctrl = BreakWindowController(type: type, allowSnooze: true)
+
+            if screen == "countdown" {
+                ctrl.showCountdown()
+                ctrl.timer?.invalidate()
+                ctrl.timer = nil
+            } else if screen == "complete" {
+                ctrl.showComplete()
+            } else if screen == "milestone" {
+                ctrl.showMilestonePreview()
+            }
+
+            galleryCtrl = ctrl
         }
 
-        galleryCtrl = ctrl
-        let typeName = type == .eye ? "eye" : "long"
-        print("  [\(galleryIndex + 1)/\(galleryScreens.count)] \(typeName) — \(screen)")
+        print("  [\(galleryIndex + 1)/\(galleryScreens.count)] \(category) — \(screen)")
         NSApp.activate(ignoringOtherApps: true)
     }
 

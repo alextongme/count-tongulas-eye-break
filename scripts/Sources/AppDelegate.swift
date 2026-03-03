@@ -130,6 +130,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         bugItem.target = self
         menu.addItem(bugItem)
 
+        let featureItem = NSMenuItem(title: "💡 Request a feature", action: #selector(requestFeature), keyEquivalent: "")
+        featureItem.target = self
+        menu.addItem(featureItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(title: "Quit Count Tongula", action: #selector(quitApp), keyEquivalent: "")
@@ -370,14 +374,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         NSWorkspace.shared.open(URL(string: "https://alextong.me")!)
     }
 
+    var feedbackController: FeedbackWindowController?
+
     @objc func reportBug() {
-        // TODO: Replace with actual email
-        let email = "placeholder@example.com"
-        let subject = "Count Tongula Bug Report"
-        let urlString = "mailto:\(email)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject)"
-        if let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
-        }
+        feedbackController = FeedbackWindowController(mode: .bug)
+    }
+
+    @objc func requestFeature() {
+        feedbackController = FeedbackWindowController(mode: .feature)
     }
 
     @objc func quitApp() {

@@ -119,6 +119,14 @@ class Statistics {
         return data.longestStreak
     }
 
+    var nextStreak: Int {
+        return data.currentStreakCount + 1
+    }
+
+    func nextStreakMilestone() -> String? {
+        return Quotes.milestones[nextStreak]
+    }
+
     var approvalRating: Int {
         let completed = breaksCompletedToday
         let skipped = breaksSkippedToday
