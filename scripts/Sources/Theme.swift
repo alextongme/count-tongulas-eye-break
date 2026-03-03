@@ -118,6 +118,7 @@ class HoverButton: NSButton {
         addTrackingArea(NSTrackingArea(rect: bounds,
             options: [.mouseEnteredAndExited, .activeAlways], owner: self))
     }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
     override func mouseEntered(with e: NSEvent) { layer?.backgroundColor = hoverBg.cgColor }
     override func mouseExited(with e: NSEvent)  { layer?.backgroundColor = normalBg.cgColor }
@@ -152,6 +153,7 @@ class HoverLink: NSButton {
         attributedTitle = NSAttributedString(string: text, attributes: attrs)
     }
 
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
     override func updateTrackingAreas() {
         super.updateTrackingAreas()

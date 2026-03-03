@@ -43,6 +43,16 @@ cd count-tongulas-eye-break
 ./install.sh
 ```
 
+### Update
+
+```bash
+# Homebrew
+brew update && brew upgrade count-tongulas-eye-break
+
+# From source
+git pull && ./install.sh
+```
+
 ### Uninstall
 
 ```bash

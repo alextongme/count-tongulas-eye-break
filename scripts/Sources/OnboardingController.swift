@@ -6,6 +6,11 @@ private class FixedWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 }
 
+// Content view that accepts first mouse click (bypasses activate-on-click for borderless windows)
+private class FirstClickView: NSView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 class OnboardingController: NSObject {
     static let didCompleteNotification = Notification.Name("CountTongulaOnboardingComplete")
 
@@ -31,6 +36,7 @@ class OnboardingController: NSObject {
         win.isMovableByWindowBackground = false
         win.hasShadow = true
         win.level = .floating
+        win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 500, height: 520))
         self.window = win
 
         super.init()

@@ -6,6 +6,11 @@ private class SettingsWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 }
 
+// Content view that accepts first mouse click
+private class FirstClickView: NSView {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
 class SettingsWindowController: NSObject {
     let window: NSWindow
 
@@ -48,6 +53,7 @@ class SettingsWindowController: NSObject {
         win.isMovableByWindowBackground = false
         win.hasShadow = true
         win.level = .floating
+        win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 740, height: 540))
         self.window = win
 
         super.init()
