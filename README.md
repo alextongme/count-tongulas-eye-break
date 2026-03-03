@@ -26,6 +26,13 @@ brew tap alextongme/cask
 brew install --cask count-tongulas-eye-break
 ```
 
+Homebrew will ask for your password during install — this is normal. It's needed to move the app to `/Applications` and clear the macOS Gatekeeper quarantine flag (the app is not code-signed with an Apple Developer certificate). If you see an "Apple could not verify" warning, run:
+
+```bash
+sudo xattr -cr "/Applications/Count Tongula's Eye Break.app"
+open "/Applications/Count Tongula's Eye Break.app"
+```
+
 ### From source
 
 Requires Xcode Command Line Tools (`xcode-select --install`).
