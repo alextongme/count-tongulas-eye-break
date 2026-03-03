@@ -11,13 +11,8 @@ Every **20 minutes**, look at something **20 feet** away for **20 seconds**.
 </p>
 
 <p align="center">
-<img src="assets/screenshots/all-03-eye-prompt.png" width="380" alt="Eye break prompt">
-<img src="assets/screenshots/all-04-eye-countdown.png" width="380" alt="Eye break countdown">
-</p>
-
-<p align="center">
-<img src="assets/screenshots/all-06-long-prompt.png" width="380" alt="Long break prompt">
-<img src="assets/screenshots/all-05-eye-complete.png" width="380" alt="Break complete">
+<img src="assets/screenshots/all-03-eye-prompt.png" width="360" alt="Eye break prompt">
+<img src="assets/screenshots/all-04-eye-countdown.png" width="360" alt="Eye break countdown">
 </p>
 
 ---
@@ -27,6 +22,7 @@ Every **20 minutes**, look at something **20 feet** away for **20 seconds**.
 ### Homebrew (recommended)
 
 ```bash
+brew tap alextongme/cask
 brew install --cask count-tongulas-eye-break
 ```
 
@@ -40,19 +36,13 @@ cd count-tongulas-eye-break
 ./install.sh
 ```
 
-The installer compiles all Swift sources, installs to `~/.eye-break/`, and loads a LaunchAgent. Count Tongula appears in your menu bar immediately and on every login.
-
-## Uninstall
-
-### Homebrew
+### Uninstall
 
 ```bash
+# Homebrew
 brew uninstall count-tongulas-eye-break
-```
 
-### From source
-
-```bash
+# From source
 ./uninstall.sh
 ```
 
@@ -66,42 +56,38 @@ brew uninstall count-tongulas-eye-break
 - **Smart timer** -- pauses when your screen is locked, Mac sleeps, or Focus/DND is active
 - **Idle detection** -- resets the timer when you're already away from the keyboard
 - **Long breaks** -- every N eye breaks, triggers a longer stretch break
-- **Multi-monitor** -- optional fullscreen dim overlay on all connected screens
-- **Configurable** -- adjust intervals, durations, sounds, and behavior from the Settings panel
+- **Multi-monitor** -- dims all connected screens during breaks
+- **Configurable** -- adjust intervals, durations, sounds, and behavior from Settings
 - **Sound customization** -- 14 macOS system sounds with live preview
 - **Global shortcuts** -- trigger a break or pause from anywhere
-- **Statistics** -- tracks breaks completed, skipped, snoozed, with streak tracking and milestone titles
-- **Onboarding** -- first-run welcome screen with the 20-20-20 rule explanation
+- **Statistics** -- streak tracking with vampire-themed milestone titles
 - **Launch at login** -- runs automatically via macOS LaunchAgent
+
+---
 
 ## Screenshots
 
-### Onboarding
+<p align="center">
+<img src="assets/screenshots/all-01-onboarding.png" width="400" alt="Onboarding">
+</p>
+<p align="center"><em>First-run onboarding</em></p>
 
 <p align="center">
-<img src="assets/screenshots/all-01-onboarding.png" width="420" alt="Onboarding">
+<img src="assets/screenshots/all-03-eye-prompt.png" width="360" alt="Eye break prompt">
+<img src="assets/screenshots/all-05-eye-complete.png" width="360" alt="Eye break complete">
 </p>
-
-### Settings
+<p align="center"><em>Eye break prompt and completion</em></p>
 
 <p align="center">
-<img src="assets/screenshots/all-02-settings.png" width="560" alt="Settings">
+<img src="assets/screenshots/all-06-long-prompt.png" width="360" alt="Long break prompt">
+<img src="assets/screenshots/all-07-long-countdown.png" width="360" alt="Long break countdown">
 </p>
-
-### Eye Break
+<p align="center"><em>Long stretch break</em></p>
 
 <p align="center">
-<img src="assets/screenshots/all-03-eye-prompt.png" width="380" alt="Eye break prompt">
-<img src="assets/screenshots/all-04-eye-countdown.png" width="380" alt="Eye break countdown">
-<img src="assets/screenshots/all-05-eye-complete.png" width="380" alt="Eye break complete">
+<img src="assets/screenshots/all-02-settings.png" width="520" alt="Settings">
 </p>
-
-### Long Break
-
-<p align="center">
-<img src="assets/screenshots/all-06-long-prompt.png" width="380" alt="Long break prompt">
-<img src="assets/screenshots/all-07-long-countdown.png" width="380" alt="Long break countdown">
-</p>
+<p align="center"><em>Settings</em></p>
 
 ---
 
@@ -116,38 +102,20 @@ brew uninstall count-tongulas-eye-break
 
 Open **Settings** from the menu bar dropdown.
 
-### Timing
-
-| Setting | Range | Default |
-|---------|-------|---------|
-| Break interval | 5 - 60 min | 20 min |
-| Break duration | 5 - 60 sec | 20 sec |
-| Snooze duration | 1 - 10 min | 5 min |
-
-### Sounds
-
-| Setting | Default |
-|---------|---------|
-| Sound enabled | On |
-| Prompt sound | Sosumi |
-| Complete sound | Blow |
-
-### Behavior
-
-| Setting | Default |
-|---------|---------|
-| Pause during DND | On |
-| Detect inactivity | On |
-| Dim screens on break | On |
-| Launch at login | On |
-
-### Long Breaks
-
-| Setting | Default |
-|---------|---------|
-| Long breaks enabled | On |
-| Frequency | Every 3 eye breaks |
-| Duration | 5 min |
+| Section | Setting | Default |
+|---------|---------|---------|
+| **Timing** | Break interval | 20 min |
+| | Break duration | 20 sec |
+| | Snooze duration | 5 min |
+| **Sounds** | Prompt sound | Sosumi |
+| | Complete sound | Blow |
+| **Behavior** | Pause during DND | On |
+| | Detect inactivity | On |
+| | Dim screens on break | On |
+| | Launch at login | On |
+| **Long Breaks** | Enabled | On |
+| | Frequency | Every 3 eye breaks |
+| | Duration | 5 min |
 
 All settings persist via `UserDefaults` and take effect immediately.
 
@@ -167,14 +135,18 @@ Count Tongula tracks your devotion. Stats are stored in `~/Library/Application S
 | 50 | Considered for Immortality |
 | 100 | Order of Count Tongula |
 
-## Architecture
+---
+
+## Development
+
+### Architecture
 
 Single binary compiled from `scripts/Sources/*.swift` using `swiftc`. No external dependencies.
 
 ```
 scripts/Sources/*.swift  -->  eye_break_ui (single binary, swiftc -O)
                               |
-                              +-- NSStatusItem (menu bar 🦇 + countdown)
+                              +-- NSStatusItem (menu bar + countdown)
                               +-- BreakWindowController (eye + long breaks)
                               +-- SettingsWindowController (two-column prefs)
                               +-- OnboardingController (first-run setup)
@@ -184,18 +156,18 @@ scripts/Sources/*.swift  -->  eye_break_ui (single binary, swiftc -O)
                               +-- Preferences (UserDefaults)
 ```
 
-## Releasing
+### Releasing
 
-Tag a version and push — GitHub Actions handles the rest (builds the `.app`, creates a GitHub Release, and updates the Homebrew Cask formula).
+Tag a version and push — GitHub Actions builds the `.app`, creates a GitHub Release, and updates the Homebrew Cask formula automatically.
 
 ```bash
 git tag v0.3.0
 git push --tags
 ```
 
-**One-time setup:** the workflow needs a `CASK_PAT` repository secret with write access to `alextongme/homebrew-cask`. See [GitHub fine-grained tokens](https://github.com/settings/tokens?type=beta).
+**One-time setup:** add a `CASK_PAT` [repository secret](https://github.com/alextongme/count-tongulas-eye-break/settings/secrets/actions) with write access to `alextongme/homebrew-cask`. Create one at [GitHub fine-grained tokens](https://github.com/settings/tokens?type=beta).
 
-## Requirements
+### Requirements
 
 - macOS 12+ (Monterey or later)
 - Xcode Command Line Tools (for building from source only)
