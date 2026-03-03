@@ -121,6 +121,8 @@ if args.contains("--demo") {
                     eyeBreak.primaryBtn.isHidden = false
                     eyeBreak.secondaryBtn.isHidden = true
                     eyeBreak.dismissBtn.isHidden = true
+                    eyeBreak.escHint.isHidden = true
+                    eyeBreak.enterHint.isHidden = false
                     eyeBreak.primaryPaired.isActive = false
                     eyeBreak.primaryCenterX.isActive = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

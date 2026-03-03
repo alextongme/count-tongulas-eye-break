@@ -11,8 +11,7 @@ Every **20 minutes**, look at something **20 feet** away for **20 seconds**.
 </p>
 
 <p align="center">
-<img src="assets/screenshots/all-03-eye-prompt.png" width="360" alt="Eye break prompt">
-<img src="assets/screenshots/all-04-eye-countdown.png" width="360" alt="Eye break countdown">
+<img src="assets/screenshots/full-screen-fog.png" width="720" alt="Full screen with fog overlay">
 </p>
 
 ---
@@ -74,15 +73,23 @@ brew uninstall count-tongulas-eye-break
 - **Idle detection** -- resets the timer when you're already away from the keyboard
 - **Long breaks** -- every N eye breaks, triggers a longer stretch break
 - **Multi-monitor** -- dims all connected screens during breaks
+- **Cloud overlay** -- animated fog drifts across your screen during breaks
 - **Configurable** -- adjust intervals, durations, sounds, and behavior from Settings
 - **Sound customization** -- 14 macOS system sounds with live preview
+- **Strict mode** -- disable skip and snooze to stay disciplined
 - **Global shortcuts** -- trigger a break or pause from anywhere
 - **Statistics** -- streak tracking with vampire-themed milestone titles
+- **Pre-break notifications** -- get a heads-up before breaks start
 - **Launch at login** -- runs automatically via macOS LaunchAgent
 
 ---
 
 ## Screenshots
+
+<p align="center">
+<img src="assets/screenshots/full-screen-fog.png" width="720" alt="Full screen with fog overlay">
+</p>
+<p align="center"><em>Fog overlay dims your screen during a break</em></p>
 
 <p align="center">
 <img src="assets/screenshots/all-01-onboarding.png" width="400" alt="Onboarding">
@@ -114,6 +121,8 @@ brew uninstall count-tongulas-eye-break
 |----------|--------|
 | `Cmd + Shift + B` | Take a break now |
 | `Cmd + Shift + P` | Pause / resume timer |
+| `Esc` | Skip break (during countdown) |
+| `Enter` | Dismiss (on completion screen) |
 
 ## Configuration
 
@@ -129,7 +138,11 @@ Open **Settings** from the menu bar dropdown.
 | **Behavior** | Pause during DND | On |
 | | Detect inactivity | On |
 | | Dim screens on break | On |
+| | Cloud effect on break | On |
 | | Launch at login | On |
+| | Strict mode (no skip/snooze) | Off |
+| | Pause for meetings/presentations | On |
+| | Notify before break | On |
 | **Long Breaks** | Enabled | On |
 | | Frequency | Every 3 eye breaks |
 | | Duration | 5 min |

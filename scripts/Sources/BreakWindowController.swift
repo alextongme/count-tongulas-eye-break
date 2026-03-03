@@ -41,6 +41,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     var dismissBtn: HoverLink!
     var lottieView: LottieAnimationView?
     var escHint: NSTextField!
+    var enterHint: NSTextField!
+    private var isOnCompleteScreen = false
     private var animationFiles: [String] = []
     private var unusedAnimations: [String] = []
     private var escMonitor: Any?
@@ -141,6 +143,11 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         // Esc hint label
         escHint = makeLabel("Press Esc to skip", size: 11, weight: .regular, color: Drac.comment)
         escHint.alphaValue = 0.6
+
+        // Enter hint label (shown on complete screen)
+        enterHint = makeLabel("Press Enter to dismiss", size: 11, weight: .regular, color: Drac.comment)
+        enterHint.alphaValue = 0.6
+        enterHint.isHidden = true
         escHint.isHidden = true
 
         // Esc key monitor
@@ -150,6 +157,12 @@ class BreakWindowController: NSObject, NSWindowDelegate {
                     self?.finishWithResult(.skipped)
                 }
                 return nil
+            }
+            if event.keyCode == 36 { // Enter key
+                if self?.isOnCompleteScreen == true {
+                    self?.finishWithResult(.completed)
+                    return nil
+                }
             }
             return event
         }
@@ -212,7 +225,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         dismissBtn.translatesAutoresizingMaskIntoConstraints = false
 
         for v in [mascot, heading, body, detail, countdownLbl, countdownSub,
-                  progressBar, primaryBtn!, secondaryBtn!, dismissBtn!, escHint!] as [NSView] {
+                  progressBar, primaryBtn!, secondaryBtn!, dismissBtn!, escHint!, enterHint!] as [NSView] {
             cv.addSubview(v)
         }
         if let lv = lottieView { cv.addSubview(lv) }
@@ -276,6 +289,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             // Esc hint
             escHint.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
             escHint.topAnchor.constraint(equalTo: dismissBtn.bottomAnchor, constant: 8),
+
+            // Enter hint (below primary button on complete screen)
+            enterHint.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+            enterHint.topAnchor.constraint(equalTo: primaryBtn.bottomAnchor, constant: 12),
         ])
 
         bodyTopConstraint = body.topAnchor.constraint(equalTo: heading.bottomAnchor, constant: 14)
@@ -362,6 +379,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     // MARK: - Screen States
 
     func showPrompt() {
+        isOnCompleteScreen = false
+
         heading.stringValue = (breakType == .long)
             ? "Time for a stretch break!"
             : "Time for an eye break!"
@@ -381,6 +400,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         countdownLbl.isHidden = true
         countdownSub.isHidden = true
         progressBar.isHidden = true
+        enterHint.isHidden = true
 
         primaryBtn.setLabel("Start Break")
         primaryBtn.isHidden = false
@@ -411,6 +431,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     }
 
     func showCountdown() {
+        isOnCompleteScreen = false
+
         if Preferences.shared.fullscreenOverlay && overlayWindows.isEmpty {
             showOverlays()
         }
@@ -424,6 +446,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         countdownLbl.isHidden = false
         countdownSub.isHidden = false
         progressBar.isHidden = false
+        enterHint.isHidden = true
 
         let isStrict = Preferences.shared.strictMode
         primaryBtn.isHidden = true
@@ -473,6 +496,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     }
 
     func showComplete() {
+        isOnCompleteScreen = true
         timer?.invalidate()
         timer = nil
 
@@ -530,6 +554,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         secondaryBtn.isHidden = true
         dismissBtn.isHidden = true
         escHint.isHidden = true
+        enterHint.isHidden = false
         dismissBelowProgress.isActive = false
         dismissAtBottom.isActive = true
         NSLayoutConstraint.deactivate(countdownCentering)
@@ -548,6 +573,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
     /// Preview-only: force the milestone complete UI regardless of actual streak
     func showMilestonePreview() {
+        isOnCompleteScreen = true
         timer?.invalidate()
         timer = nil
 
@@ -583,6 +609,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         secondaryBtn.isHidden = true
         dismissBtn.isHidden = true
         escHint.isHidden = true
+        enterHint.isHidden = false
         dismissBelowProgress.isActive = false
         dismissAtBottom.isActive = true
         NSLayoutConstraint.deactivate(countdownCentering)
