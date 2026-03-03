@@ -6,7 +6,63 @@ app.setActivationPolicy(.accessory)  // No Dock icon
 // Check for --screenshot mode (automated screenshot capture)
 let args = ProcessInfo.processInfo.arguments
 
-if args.contains("--screenshot-all") {
+if args.contains("--demo") {
+    // Demo mode: show each screen live for 3 seconds
+    let pause: Double = 3.0
+
+    // 1. Onboarding
+    let onboarding = OnboardingController()
+    onboarding.window.makeKeyAndOrderFront(nil)
+    NSApp.activate(ignoringOtherApps: true)
+
+    DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+        onboarding.window.orderOut(nil)
+
+        // 2. Settings
+        let settings = SettingsWindowController()
+        settings.window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+            settings.window.orderOut(nil)
+
+            // 3. Eye break prompt
+            let eyeBreak = BreakWindowController(type: .eye, allowSnooze: true)
+            NSApp.activate(ignoringOtherApps: true)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+                // 4. Eye break countdown
+                eyeBreak.showCountdown()
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+                    // 5. Eye break complete
+                    eyeBreak.timer?.invalidate()
+                    eyeBreak.timer = nil
+                    eyeBreak.showComplete()
+                    // Cancel auto-quit so we control timing
+                    for ow in eyeBreak.overlayWindows { ow.orderOut(nil) }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+                        eyeBreak.window.orderOut(nil)
+
+                        // 6. Long break prompt
+                        let longBreak = BreakWindowController(type: .long, allowSnooze: true)
+                        NSApp.activate(ignoringOtherApps: true)
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+                            // 7. Long break countdown
+                            longBreak.showCountdown()
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + pause) {
+                                NSApp.terminate(nil)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+} else if args.contains("--screenshot-all") {
     let outdir = args.last(where: { $0.hasPrefix("--outdir=") })
         .map { String($0.dropFirst("--outdir=".count)) } ?? "/tmp"
     var delay: Double = 0.5

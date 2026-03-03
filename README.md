@@ -1,8 +1,8 @@
-# 🧛 Count Tongula's Eye Break Reminder
+# Count Tongula's Eye Break
 
-**A persistent macOS menu bar app that reminds you to rest your eyes every 20 minutes of active screen time.**
+**A macOS menu bar app that reminds you to rest your eyes using the 20-20-20 rule.**
 
-Follows the [20-20-20 rule](https://www.healthline.com/health/eye-health/20-20-20-rule): every **20 minutes**, look at something **20 feet** away for **20 seconds**.
+Every **20 minutes**, look at something **20 feet** away for **20 seconds**.
 
 <p align="center">
 <img src="https://img.shields.io/badge/platform-macOS-bd93f9?style=flat-square" alt="macOS">
@@ -11,138 +11,101 @@ Follows the [20-20-20 rule](https://www.healthline.com/health/eye-health/20-20-2
 </p>
 
 <p align="center">
-<img src="screenshots/screenshot-prompt.png" width="420" alt="Break prompt with vampire quote">
-<img src="screenshots/screenshot-countdown.png" width="420" alt="20-second countdown">
+<img src="assets/screenshots/all-03-eye-prompt.png" width="380" alt="Eye break prompt">
+<img src="assets/screenshots/all-04-eye-countdown.png" width="380" alt="Eye break countdown">
 </p>
 
 <p align="center">
-<img src="screenshots/screenshot-complete.png" width="420" alt="Break complete">
+<img src="assets/screenshots/all-06-long-prompt.png" width="380" alt="Long break prompt">
+<img src="assets/screenshots/all-05-eye-complete.png" width="380" alt="Break complete">
 </p>
 
 ---
 
-## Table of Contents
-
-- [Features](#features)
-- [Install](#install)
-- [Uninstall](#uninstall)
-- [How It Works](#how-it-works)
-- [Keyboard Shortcuts](#keyboard-shortcuts)
-- [Configuration](#configuration)
-- [Statistics & Gamification](#statistics--gamification)
-- [Requirements](#requirements)
-- [License](#license)
-
----
-
-## Features
-
-- **Menu bar app** -- lives in your menu bar as a 🦇 icon with a live countdown to your next break
-- **Dracula theme** -- native AppKit windows styled with the [Dracula](https://draculatheme.com) color palette and mascot
-- **Random vampire quotes** -- a different Bram Stoker-inspired quote for prompts, countdowns, completions, and stretch breaks
-- **Smart timer** -- only counts active screen time; pauses when your screen is locked, your Mac sleeps, or macOS Focus/DND is active
-- **Idle detection** -- detects keyboard and mouse inactivity via `CGEventSource`; resets the timer when you're already away (counts as a natural break)
-- **Configurable intervals** -- adjust break interval (5-60 min), break duration (10-60 sec), and snooze duration (1-10 min) from the Settings panel
-- **Sound customization** -- choose from 14 macOS system sounds for the break prompt and completion chime, with live preview
-- **Snooze support** -- not ready? Snooze for a configurable duration (one snooze per break cycle)
-- **Guided countdown** -- 20-second countdown with a purple progress bar
-- **Long break mode** -- every N eye breaks, triggers a longer 5-minute stretch break with dedicated stretch quotes from the Count
-- **Multi-monitor support** -- optional fullscreen overlay on all connected screens
-- **Global keyboard shortcuts** -- trigger a break or pause/resume from anywhere
-- **Statistics & gamification** -- tracks breaks completed, skipped, and snoozed per day; streak tracking with vampire-themed milestone titles
-- **Onboarding** -- first-run welcome screen explaining the 20-20-20 rule with interval and duration configuration
-- **Mascot animation** -- gentle floating animation on the vampire mascot using Core Animation
-- **Runs at login** -- installs as a macOS LaunchAgent
-
 ## Install
+
+### Homebrew (recommended)
+
+```bash
+brew install --cask count-tongulas-eye-break
+```
+
+### From source
 
 Requires Xcode Command Line Tools (`xcode-select --install`).
 
 ```bash
 git clone https://github.com/alextongme/count-tongulas-eye-break.git
-cd eye-break-reminder
+cd count-tongulas-eye-break
 ./install.sh
 ```
 
-The installer compiles all Swift sources into a single `eye_break_ui` binary, symlinks everything to `~/.eye-break/`, and loads the LaunchAgent. Count Tongula appears in your menu bar immediately and on every login.
-
-Updates are instant -- just pull:
-
-```bash
-cd eye-break-reminder
-git pull && ./install.sh
-```
+The installer compiles all Swift sources, installs to `~/.eye-break/`, and loads a LaunchAgent. Count Tongula appears in your menu bar immediately and on every login.
 
 ## Uninstall
 
+### Homebrew
+
 ```bash
-cd eye-break-reminder
+brew uninstall count-tongulas-eye-break
+```
+
+### From source
+
+```bash
 ./uninstall.sh
 ```
 
-## How It Works
+---
 
-```
-scripts/Sources/*.swift  -->  eye_break_ui (single binary)
-                              compiled with swiftc
+## Features
 
-  Menu Bar (NSStatusItem)
-  ┌─────────────────────────────────────────────────┐
-  │  🦇 18:42                                       │
-  │ ┌─────────────────────────────────────────────┐ │
-  │ │  Next break in 18:42                        │ │
-  │ │  Today: 5 breaks, 1 skipped                 │ │
-  │ │  Streak: 5 breaks                           │ │
-  │ │  Approval rating: 83%                       │ │
-  │ │  ─────────────────────                      │ │
-  │ │  Pause / Resume                             │ │
-  │ │  Take a Break Now                           │ │
-  │ │  Settings...                                │ │
-  │ │  Quit Count Tongula                         │ │
-  │ └─────────────────────────────────────────────┘ │
-  └────────┬────────────────────────┬───────────────┘
-           │                        │
-           v                        v
-  Break Window               Settings Window
-  ┌───────────────────┐      ┌───────────────────┐
-  │ 🧛 Mascot         │      │  Timing           │
-  │ Vampire quote     │      │  Sounds           │
-  │ [Start] [Snooze]  │      │  Behavior         │
-  │         |         │      │  Long Breaks      │
-  │    20s countdown  │      └───────────────────┘
-  │    + progress bar │
-  │         |         │
-  │  "Break complete" │
-  └───────────────────┘
+- **Menu bar app** -- 🦇 icon with live countdown to your next break
+- **Dracula theme** -- native AppKit UI styled with the [Dracula](https://draculatheme.com) color palette
+- **Vampire quotes** -- random Bram Stoker-inspired quotes during breaks
+- **Smart timer** -- pauses when your screen is locked, Mac sleeps, or Focus/DND is active
+- **Idle detection** -- resets the timer when you're already away from the keyboard
+- **Long breaks** -- every N eye breaks, triggers a longer stretch break
+- **Multi-monitor** -- optional fullscreen dim overlay on all connected screens
+- **Configurable** -- adjust intervals, durations, sounds, and behavior from the Settings panel
+- **Sound customization** -- 14 macOS system sounds with live preview
+- **Global shortcuts** -- trigger a break or pause from anywhere
+- **Statistics** -- tracks breaks completed, skipped, snoozed, with streak tracking and milestone titles
+- **Onboarding** -- first-run welcome screen with the 20-20-20 rule explanation
+- **Launch at login** -- runs automatically via macOS LaunchAgent
 
-  Supporting Systems
-  ┌─────────────────────────────────────────────────┐
-  │  IdleDetector   - CGEventSource idle time       │
-  │                 - Sleep/wake notifications       │
-  │                 - Screen lock via IOKit          │
-  │                 - DND/Focus mode awareness       │
-  │  Statistics     - ~/Library/Application Support/ │
-  │                   CountTongula/statistics.json   │
-  │  Preferences    - UserDefaults persistence       │
-  │  SoundManager   - 14 macOS system sounds         │
-  │  Onboarding     - First-run configuration        │
-  └─────────────────────────────────────────────────┘
-```
+## Screenshots
 
-**Single binary architecture** -- the app is a persistent Swift menu bar application compiled from 11 source files in `scripts/Sources/`. No bash daemon, no Python dependencies. The binary runs as a standard macOS `NSApplication` with an `NSStatusItem` in the menu bar.
+### Onboarding
 
-**Break flow** -- when the timer reaches zero, the app plays the prompt sound and opens a break window with three phases:
-1. **Prompt** -- shows the Dracula mascot, a random vampire quote, and Start Break / Snooze buttons
-2. **Countdown** -- a 20-second guided countdown with a progress bar and countdown-specific quotes
-3. **Complete** -- a congratulatory message from the Count and an auto-dismiss timer
+<p align="center">
+<img src="assets/screenshots/all-01-onboarding.png" width="420" alt="Onboarding">
+</p>
 
-**Idle intelligence** -- the timer resets automatically when the user has been idle past the configured threshold (default: 5 minutes), since the user already took a natural break. Breaks are deferred entirely when the system is sleeping, the screen is locked, or macOS Focus/DND mode is active.
+### Settings
 
-**Long breaks** -- every N eye breaks (default: 3), the app triggers a longer 5-minute stretch break instead. These use dedicated stretch break quotes from the Count encouraging the user to stand, walk, and stretch.
+<p align="center">
+<img src="assets/screenshots/all-02-settings.png" width="560" alt="Settings">
+</p>
+
+### Eye Break
+
+<p align="center">
+<img src="assets/screenshots/all-03-eye-prompt.png" width="380" alt="Eye break prompt">
+<img src="assets/screenshots/all-04-eye-countdown.png" width="380" alt="Eye break countdown">
+<img src="assets/screenshots/all-05-eye-complete.png" width="380" alt="Eye break complete">
+</p>
+
+### Long Break
+
+<p align="center">
+<img src="assets/screenshots/all-06-long-prompt.png" width="380" alt="Long break prompt">
+<img src="assets/screenshots/all-07-long-countdown.png" width="380" alt="Long break countdown">
+</p>
+
+---
 
 ## Keyboard Shortcuts
-
-These global shortcuts work from any application:
 
 | Shortcut | Action |
 |----------|--------|
@@ -151,72 +114,81 @@ These global shortcuts work from any application:
 
 ## Configuration
 
-Open Settings from the menu bar dropdown. The Settings panel has four sections:
+Open **Settings** from the menu bar dropdown.
 
 ### Timing
 
-| Setting | Range | Default | Description |
-|---------|-------|---------|-------------|
-| Break interval | 5 - 60 min | 20 min | Time between eye breaks |
-| Break duration | 10 - 60 sec | 20 sec | Length of the guided countdown |
-| Snooze duration | 1 - 10 min | 5 min | How long a snooze lasts |
+| Setting | Range | Default |
+|---------|-------|---------|
+| Break interval | 5 - 60 min | 20 min |
+| Break duration | 5 - 60 sec | 20 sec |
+| Snooze duration | 1 - 10 min | 5 min |
 
 ### Sounds
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Sound enabled | On | Master toggle for all sounds |
-| Prompt sound | Basso | Sound played when a break starts |
-| Complete sound | Hero | Sound played when a break finishes |
-
-Choose from 14 macOS system sounds: Basso, Blow, Bottle, Frog, Funk, Glass, Hero, Morse, Ping, Pop, Purr, Sosumi, Submarine, Tink. Each can be previewed from the Settings panel.
+| Setting | Default |
+|---------|---------|
+| Sound enabled | On |
+| Prompt sound | Sosumi |
+| Complete sound | Blow |
 
 ### Behavior
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| DND aware | On | Pause breaks during macOS Focus/Do Not Disturb |
-| Idle detection | On | Reset timer when user is idle (natural break) |
-| Fullscreen overlay | Off | Show break overlay on all connected monitors |
-| Launch at login | On | Start Count Tongula automatically at login |
+| Setting | Default |
+|---------|---------|
+| Pause during DND | On |
+| Detect inactivity | On |
+| Dim screens on break | On |
+| Launch at login | On |
 
 ### Long Breaks
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Long breaks enabled | On | Enable periodic longer stretch breaks |
-| Frequency | Every 3 eye breaks | How many eye breaks between long breaks |
-| Duration | 5 min | Length of the stretch break |
+| Setting | Default |
+|---------|---------|
+| Long breaks enabled | On |
+| Frequency | Every 3 eye breaks |
+| Duration | 5 min |
 
-All settings are persisted via `UserDefaults` and take effect immediately.
+All settings persist via `UserDefaults` and take effect immediately.
 
-## Statistics & Gamification
+## Statistics
 
-Count Tongula tracks your devotion. Statistics are stored in `~/Library/Application Support/CountTongula/statistics.json` and retained for 30 days.
+Count Tongula tracks your devotion. Stats are stored in `~/Library/Application Support/CountTongula/statistics.json` and retained for 30 days.
 
-**Daily stats** (visible in the menu bar dropdown):
-- Breaks completed
-- Breaks skipped
-- Breaks snoozed
-- Approval rating (completed / total as a percentage)
-
-**Streak tracking** -- consecutive breaks completed without skipping. Skipping a break resets the streak. Snoozing does not break your streak.
-
-**Milestone titles** -- unlock vampire-themed ranks as your streak grows:
+- Breaks completed, skipped, and snoozed per day
+- Approval rating (completed / total)
+- Streak tracking with milestone titles:
 
 | Streak | Title |
 |--------|-------|
 | 5 | Familiar |
 | 10 | Servant of the Night |
 | 25 | Thrall |
-| 50 | Considered for immortality |
+| 50 | Considered for Immortality |
 | 100 | Order of Count Tongula |
+
+## Architecture
+
+Single binary compiled from `scripts/Sources/*.swift` using `swiftc`. No external dependencies.
+
+```
+scripts/Sources/*.swift  -->  eye_break_ui (single binary, swiftc -O)
+                              |
+                              +-- NSStatusItem (menu bar 🦇 + countdown)
+                              +-- BreakWindowController (eye + long breaks)
+                              +-- SettingsWindowController (two-column prefs)
+                              +-- OnboardingController (first-run setup)
+                              +-- IdleDetector (CGEventSource, IOKit, DND)
+                              +-- Statistics (JSON persistence, streaks)
+                              +-- SoundManager (14 macOS system sounds)
+                              +-- Preferences (UserDefaults)
+```
 
 ## Requirements
 
 - macOS 12+ (Monterey or later)
-- Xcode Command Line Tools (for `swiftc`)
+- Xcode Command Line Tools (for building from source only)
 
 ## License
 
-MIT -- Dracula mascot artwork belongs to the [Dracula Theme](https://draculatheme.com) project.
+MIT

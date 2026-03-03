@@ -5,3 +5,4 @@
 *.key
 scripts/eye_break_ui
 build/
+dist/
