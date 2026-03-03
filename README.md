@@ -74,12 +74,11 @@ brew uninstall count-tongulas-eye-break
 - **Long breaks** -- every N eye breaks, triggers a longer stretch break
 - **Multi-monitor** -- dims all connected screens during breaks
 - **Cloud overlay** -- animated fog drifts across your screen during breaks
+- **Bat animations** -- procedural bat silhouettes fly across the fog with randomized flight paths, wingspans, flap speeds, and depth scaling
 - **Configurable** -- adjust intervals, durations, sounds, and behavior from Settings
 - **Sound customization** -- 14 macOS system sounds with live preview
 - **Strict mode** -- disable skip and snooze to stay disciplined
-- **Global shortcuts** -- trigger a break or pause from anywhere
 - **Statistics** -- streak tracking with vampire-themed milestone titles
-- **Pre-break notifications** -- get a heads-up before breaks start
 - **Launch at login** -- runs automatically via macOS LaunchAgent
 
 ---
@@ -119,8 +118,8 @@ brew uninstall count-tongulas-eye-break
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd + Shift + B` | Take a break now |
-| `Cmd + Shift + P` | Pause / resume timer |
+| `Cmd + Shift + B` | Take a break now (via menu bar) |
+| `Cmd + Shift + P` | Pause / resume timer (via menu bar) |
 | `Esc` | Skip break (during countdown) |
 | `Enter` | Dismiss (on completion screen) |
 
@@ -142,7 +141,6 @@ Open **Settings** from the menu bar dropdown.
 | | Launch at login | On |
 | | Strict mode (no skip/snooze) | Off |
 | | Pause for meetings/presentations | On |
-| | Notify before break | On |
 | **Long Breaks** | Enabled | On |
 | | Frequency | Every 3 eye breaks |
 | | Duration | 5 min |
@@ -182,7 +180,7 @@ scripts/Sources/*.swift  -->  eye_break_ui (single binary, SwiftPM)
                               +-- OnboardingController (first-run setup)
                               +-- IdleDetector (CGEventSource, IOKit, DND)
                               +-- Statistics (JSON persistence, streaks)
-                              +-- SoundManager (14 macOS system sounds)
+                              +-- SoundManager (14 macOS system sounds via afplay)
                               +-- Preferences (UserDefaults)
 ```
 
@@ -191,7 +189,7 @@ scripts/Sources/*.swift  -->  eye_break_ui (single binary, SwiftPM)
 Tag a version and push — GitHub Actions builds the `.app`, creates a GitHub Release, and updates the Homebrew Cask formula automatically.
 
 ```bash
-git tag v0.3.0
+git tag v0.6.0
 git push --tags
 ```
 
