@@ -19,7 +19,7 @@ class Statistics {
     private var data = StatsData()
     private let fileURL: URL
 
-    private static let dateFormatter: DateFormatter = {
+    static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
         return f
@@ -133,5 +133,20 @@ class Statistics {
 
     func streakMessage() -> String? {
         return Quotes.milestones[currentStreak]
+    }
+
+    func recentDays(count: Int) -> [DayStats] {
+        let calendar = Calendar.current
+        var result: [DayStats] = []
+        for i in (0..<count).reversed() {
+            let date = calendar.date(byAdding: .day, value: -i, to: Date())!
+            let dateStr = Statistics.dateFormatter.string(from: date)
+            if let existing = data.days.first(where: { $0.date == dateStr }) {
+                result.append(existing)
+            } else {
+                result.append(DayStats(date: dateStr))
+            }
+        }
+        return result
     }
 }

@@ -33,9 +33,12 @@ class SettingsWindowController: NSObject {
     var longBreakEveryLabel: NSTextField!
     var longBreakDurationSlider: NSSlider!
     var longBreakDurationLabel: NSTextField!
+    var strictToggle: NSSwitch!
+    var appExclusionToggle: NSSwitch!
+    var preBreakNotifyToggle: NSSwitch!
 
     private let W: CGFloat = 740
-    private let H: CGFloat = 540
+    private let H: CGFloat = 680
     private let colW: CGFloat = 300
     private let leftX: CGFloat = 44
     private let rightX: CGFloat = 396  // 44 + 300 + 52 gap
@@ -43,7 +46,7 @@ class SettingsWindowController: NSObject {
 
     override init() {
         let win = SettingsWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 740, height: 540),
+            contentRect: NSRect(x: 0, y: 0, width: 740, height: 680),
             styleMask: .borderless,
             backing: .buffered,
             defer: false
@@ -54,7 +57,7 @@ class SettingsWindowController: NSObject {
         win.isMovableByWindowBackground = false
         win.hasShadow = true
         win.level = .floating
-        win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 740, height: 540))
+        win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 740, height: 680))
         self.window = win
 
         super.init()
@@ -186,6 +189,35 @@ class SettingsWindowController: NSObject {
         launchToggle = addToggleRow(
             "Launch at login", x: rightX, y: y, to: cv,
             target: self, action: #selector(launchToggleChanged))
+        y -= rowStep
+
+        strictToggle = addToggleRow(
+            "Strict mode (no skip/snooze)", x: rightX, y: y, to: cv,
+            target: self, action: #selector(strictToggleChanged))
+        y -= rowStep
+
+        appExclusionToggle = addToggleRow(
+            "Pause for meetings/presentations", x: rightX, y: y, to: cv,
+            target: self, action: #selector(appExclusionToggleChanged))
+        y -= rowStep
+
+        preBreakNotifyToggle = addToggleRow(
+            "Notify before break", x: rightX, y: y, to: cv,
+            target: self, action: #selector(preBreakNotifyToggleChanged))
+
+        // ── Restore Defaults button (bottom center) ──
+        let restoreBtn = HoverLink(
+            "Restore Defaults",
+            color: Drac.orange,
+            hover: Drac.red,
+            size: 13,
+            target: self,
+            action: #selector(restoreDefaults)
+        )
+        restoreBtn.translatesAutoresizingMaskIntoConstraints = true
+        restoreBtn.sizeToFit()
+        restoreBtn.frame = NSRect(x: (W - restoreBtn.frame.width) / 2, y: 20, width: restoreBtn.frame.width, height: 20)
+        cv.addSubview(restoreBtn)
     }
 
     // MARK: - Row builders
@@ -303,6 +335,9 @@ class SettingsWindowController: NSObject {
         launchToggle.state = prefs.launchAtLogin ? .on : .off
 
         longBreakToggle.state = prefs.longBreakEnabled ? .on : .off
+        strictToggle.state = prefs.strictMode ? .on : .off
+        appExclusionToggle.state = prefs.appExclusionEnabled ? .on : .off
+        preBreakNotifyToggle.state = prefs.preBreakNotifyEnabled ? .on : .off
         longBreakEverySlider.intValue = Int32(prefs.longBreakEveryN)
         longBreakEveryLabel.stringValue = "\(prefs.longBreakEveryN) eye breaks"
 
@@ -385,5 +420,26 @@ class SettingsWindowController: NSObject {
         let val = Int(longBreakDurationSlider.intValue)
         longBreakDurationLabel.stringValue = "\(val) min"
         Preferences.shared.longBreakDuration = val * 60
+    }
+
+    @objc func strictToggleChanged() {
+        Preferences.shared.strictMode = strictToggle.state == .on
+    }
+
+    @objc func appExclusionToggleChanged() {
+        Preferences.shared.appExclusionEnabled = appExclusionToggle.state == .on
+    }
+
+    @objc func preBreakNotifyToggleChanged() {
+        Preferences.shared.preBreakNotifyEnabled = preBreakNotifyToggle.state == .on
+    }
+
+    @objc func restoreDefaults() {
+        let domain = Bundle.main.bundleIdentifier ?? "com.counttongula.eyebreak"
+        UserDefaults.standard.removePersistentDomain(forName: domain)
+        UserDefaults.standard.synchronize()
+        // Re-register defaults and reload
+        _ = Preferences.shared
+        loadPreferences()
     }
 }

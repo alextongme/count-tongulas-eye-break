@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 
 class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
 
@@ -16,6 +17,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     var breakController: BreakWindowController?
     var settingsController: SettingsWindowController?
     var onboardingController: OnboardingController?
+    var statsChartController: StatsChartWindowController?
+    var preBreakNotified = false
 
     var countdownMenuItem: NSMenuItem!
     var statsMenuItem: NSMenuItem!
@@ -44,6 +47,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
             name: OnboardingController.didCompleteNotification,
             object: nil
         )
+
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
 
         if !Preferences.shared.hasCompletedOnboarding {
             showOnboarding()
@@ -85,13 +90,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         approvalMenuItem.isEnabled = false
         menu.addItem(approvalMenuItem)
 
+        let historyItem = NSMenuItem(title: "View History...", action: #selector(showHistory), keyEquivalent: "")
+        historyItem.target = self
+        menu.addItem(historyItem)
+
         menu.addItem(NSMenuItem.separator())
 
-        pauseMenuItem = NSMenuItem(title: "Pause", action: #selector(togglePause), keyEquivalent: "")
+        pauseMenuItem = NSMenuItem(title: "Pause", action: #selector(togglePause), keyEquivalent: "p")
+        pauseMenuItem.keyEquivalentModifierMask = [.command, .shift]
         pauseMenuItem.target = self
         menu.addItem(pauseMenuItem)
 
-        let skipItem = NSMenuItem(title: "Take a Break Now", action: #selector(skipToBreak), keyEquivalent: "")
+        let skipItem = NSMenuItem(title: "Take a Break Now", action: #selector(skipToBreak), keyEquivalent: "b")
+        skipItem.keyEquivalentModifierMask = [.command, .shift]
         skipItem.target = self
         menu.addItem(skipItem)
 
@@ -114,6 +125,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         let donateItem = NSMenuItem(title: "❤️ Donate if you enjoy the app", action: #selector(openDonate), keyEquivalent: "")
         donateItem.target = self
         menu.addItem(donateItem)
+
+        let bugItem = NSMenuItem(title: "🐛 Report a bug", action: #selector(reportBug), keyEquivalent: "")
+        bugItem.target = self
+        menu.addItem(bugItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -140,6 +155,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
 
     func startTimer() {
         breakTimer?.invalidate()
+        preBreakNotified = false
         secondsUntilBreak = Preferences.shared.breakInterval
         breakTimer = Timer.scheduledTimer(
             timeInterval: 1.0,
@@ -171,12 +187,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         if IdleDetector.shared.isUserIdle {
             // User is already resting; reset the timer as a natural break
             secondsUntilBreak = Preferences.shared.breakInterval
+            preBreakNotified = false
             updateStatusDisplay()
             return
         }
 
+        // App exclusion: pause timer while excluded app is frontmost
+        if Preferences.shared.appExclusionEnabled {
+            if let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
+               Preferences.shared.excludedBundleIDs.contains(bundleID) {
+                if let button = statusItem.button {
+                    button.title = "🦇 Excluded"
+                }
+                countdownMenuItem.title = "Paused (excluded app)"
+                return
+            }
+        }
+
         secondsUntilBreak -= 1
         updateStatusDisplay()
+
+        // Pre-break notification
+        if secondsUntilBreak == 15 && !preBreakNotified && Preferences.shared.preBreakNotifyEnabled {
+            preBreakNotified = true
+            let content = UNMutableNotificationContent()
+            content.title = "Eye break in 15 seconds"
+            content.body = "Count Tongula is preparing your eye break..."
+            content.sound = .default
+            let request = UNNotificationRequest(identifier: "preBreak", content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        }
 
         if secondsUntilBreak <= 0 {
             triggerBreak()
@@ -186,7 +226,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     func updateStatusDisplay() {
         let timeStr = formatTime(secondsUntilBreak)
         if let button = statusItem.button {
-            button.title = "🦇 \(timeStr)"
+            if secondsUntilBreak <= 30 && secondsUntilBreak > 0 {
+                let icon = secondsUntilBreak % 2 == 0 ? "🦇" : "👁"
+                button.title = "\(icon) \(timeStr)"
+            } else {
+                button.title = "🦇 \(timeStr)"
+            }
         }
         countdownMenuItem.title = "Next break in \(timeStr)"
     }
@@ -194,6 +239,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     func triggerBreak() {
         breakTimer?.invalidate()
         breakTimer = nil
+        preBreakNotified = false
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["preBreak"])
 
         let prefs = Preferences.shared
         let breakType: BreakType
@@ -302,6 +349,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    @objc func showHistory() {
+        if statsChartController == nil {
+            statsChartController = StatsChartWindowController()
+        }
+        statsChartController?.window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     @objc func openWebsite() {
         NSWorkspace.shared.open(URL(string: "https://alextong.me")!)
     }
@@ -313,6 +368,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     @objc func openDonate() {
         // TODO: Replace with actual donate link
         NSWorkspace.shared.open(URL(string: "https://alextong.me")!)
+    }
+
+    @objc func reportBug() {
+        // TODO: Replace with actual email
+        let email = "placeholder@example.com"
+        let subject = "Count Tongula Bug Report"
+        let urlString = "mailto:\(email)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? subject)"
+        if let url = URL(string: urlString) {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     @objc func quitApp() {

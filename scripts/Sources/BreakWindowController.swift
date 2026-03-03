@@ -40,8 +40,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     var secondaryBtn: HoverButton!
     var dismissBtn: HoverLink!
     var lottieView: LottieAnimationView?
+    var escHint: NSTextField!
     private var animationFiles: [String] = []
     private var unusedAnimations: [String] = []
+    private var escMonitor: Any?
 
     var primaryCenterX: NSLayoutConstraint!
     var primaryPaired: NSLayoutConstraint!
@@ -134,6 +136,22 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             action: #selector(dismissTapped)
         )
 
+        // Esc hint label
+        escHint = makeLabel("Press Esc to skip", size: 11, weight: .regular, color: Drac.comment)
+        escHint.alphaValue = 0.6
+        escHint.isHidden = true
+
+        // Esc key monitor
+        escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // Esc key
+                if !Preferences.shared.strictMode {
+                    self?.finishWithResult(.skipped)
+                }
+                return nil
+            }
+            return event
+        }
+
         // Discover all Lottie animation files
         let animDir = assetPath("animations")
         if let contents = try? FileManager.default.contentsOfDirectory(atPath: animDir) {
@@ -164,8 +182,14 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
         startMascotAnimation()
 
+        win.alphaValue = 0
         win.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.3
+            win.animator().alphaValue = 1.0
+        }
     }
 
     // MARK: - Layout
@@ -186,7 +210,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         dismissBtn.translatesAutoresizingMaskIntoConstraints = false
 
         for v in [mascot, heading, body, detail, countdownLbl, countdownSub,
-                  progressBar, primaryBtn!, secondaryBtn!, dismissBtn!] as [NSView] {
+                  progressBar, primaryBtn!, secondaryBtn!, dismissBtn!, escHint!] as [NSView] {
             cv.addSubview(v)
         }
         if let lv = lottieView { cv.addSubview(lv) }
@@ -248,6 +272,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
             // Dismiss link
             dismissBtn.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+
+            // Esc hint
+            escHint.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
+            escHint.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -8),
         ])
 
         // Mascot top: fixed for prompt/complete, flexible for countdown centering
@@ -363,7 +391,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         lottieView?.isHidden = false
         loadRandomAnimation()
 
-        if allowSnooze {
+        let isStrict = Preferences.shared.strictMode
+        if allowSnooze && !isStrict {
             secondaryBtn.isHidden = false
             primaryCenterX.isActive = false
             primaryPaired.isActive = true
@@ -372,6 +401,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             primaryPaired.isActive = false
             primaryCenterX.isActive = true
         }
+        dismissBtn.isHidden = isStrict
+        escHint.isHidden = true
     }
 
     func showCountdown() {
@@ -389,9 +420,11 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         countdownSub.isHidden = false
         progressBar.isHidden = false
 
+        let isStrict = Preferences.shared.strictMode
         primaryBtn.isHidden = true
         secondaryBtn.isHidden = true
-        dismissBtn.isHidden = false
+        dismissBtn.isHidden = isStrict
+        escHint.isHidden = isStrict
         dismissAtBottom.isActive = false
         dismissBelowProgress.isActive = true
         mascotTopFixed.isActive = false
@@ -458,6 +491,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         primaryCenterX.isActive = true
         secondaryBtn.isHidden = true
         dismissBtn.isHidden = true
+        escHint.isHidden = true
         dismissBelowProgress.isActive = false
         dismissAtBottom.isActive = true
         NSLayoutConstraint.deactivate(countdownCentering)
@@ -501,14 +535,26 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         timer?.invalidate()
         timer = nil
 
-        for ow in overlayWindows {
-            ow.orderOut(nil)
+        if let monitor = escMonitor {
+            NSEvent.removeMonitor(monitor)
+            escMonitor = nil
         }
-        overlayWindows.removeAll()
 
-        window.orderOut(nil)
-
-        delegate?.breakDidFinish(type: breakType, result: result)
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.3
+            self.window.animator().alphaValue = 0
+            for ow in self.overlayWindows {
+                ow.animator().alphaValue = 0
+            }
+        }, completionHandler: { [weak self] in
+            guard let self = self else { return }
+            for ow in self.overlayWindows {
+                ow.orderOut(nil)
+            }
+            self.overlayWindows.removeAll()
+            self.window.orderOut(nil)
+            self.delegate?.breakDidFinish(type: self.breakType, result: result)
+        })
     }
 
     // MARK: - NSWindowDelegate
@@ -535,8 +581,14 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             panel.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue - 1)
             panel.collectionBehavior = [.canJoinAllSpaces]
             panel.isMovableByWindowBackground = false
+            panel.alphaValue = 0
             panel.orderFront(nil)
             overlayWindows.append(panel)
+
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.5
+                panel.animator().alphaValue = 1.0
+            }
 
             if Preferences.shared.cloudsEnabled {
                 addOverlayClouds(to: panel, screenFrame: screen.frame)

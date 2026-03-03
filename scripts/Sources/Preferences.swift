@@ -13,6 +13,7 @@ class Preferences {
         case launchAtLogin, fullscreenOverlay, cloudsEnabled
         case longBreakEnabled, longBreakEveryN, longBreakDuration
         case hasCompletedOnboarding
+        case strictMode, appExclusionEnabled, excludedBundleIDs, preBreakNotifyEnabled
     }
 
     init() { registerDefaults() }
@@ -36,6 +37,10 @@ class Preferences {
             Key.longBreakEveryN.rawValue: 3,
             Key.longBreakDuration.rawValue: 300,
             Key.hasCompletedOnboarding.rawValue: false,
+            Key.strictMode.rawValue: false,
+            Key.appExclusionEnabled.rawValue: true,
+            Key.excludedBundleIDs.rawValue: ["us.zoom.xos", "com.apple.iWork.Keynote", "com.microsoft.Powerpoint", "com.microsoft.teams2", "com.microsoft.teams", "com.cisco.webexmeetingsapp", "com.apple.FaceTime"],
+            Key.preBreakNotifyEnabled.rawValue: true,
         ])
     }
 
@@ -126,5 +131,25 @@ class Preferences {
     var hasCompletedOnboarding: Bool {
         get { defaults.bool(forKey: Key.hasCompletedOnboarding.rawValue) }
         set { defaults.set(newValue, forKey: Key.hasCompletedOnboarding.rawValue); notify() }
+    }
+
+    var strictMode: Bool {
+        get { defaults.bool(forKey: Key.strictMode.rawValue) }
+        set { defaults.set(newValue, forKey: Key.strictMode.rawValue); notify() }
+    }
+
+    var appExclusionEnabled: Bool {
+        get { defaults.bool(forKey: Key.appExclusionEnabled.rawValue) }
+        set { defaults.set(newValue, forKey: Key.appExclusionEnabled.rawValue); notify() }
+    }
+
+    var excludedBundleIDs: [String] {
+        get { defaults.stringArray(forKey: Key.excludedBundleIDs.rawValue) ?? [] }
+        set { defaults.set(newValue, forKey: Key.excludedBundleIDs.rawValue); notify() }
+    }
+
+    var preBreakNotifyEnabled: Bool {
+        get { defaults.bool(forKey: Key.preBreakNotifyEnabled.rawValue) }
+        set { defaults.set(newValue, forKey: Key.preBreakNotifyEnabled.rawValue); notify() }
     }
 }
