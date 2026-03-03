@@ -24,7 +24,7 @@ class FeedbackWindowController: NSObject {
     private var screenshotURL: URL?
     private var screenshotWarning: NSTextField!
 
-    private let supportEmail = "alextong.dev@gmail.com"
+    private let supportEmail = "alextongme@gmail.com"
 
     init(mode: FeedbackMode) {
         self.mode = mode

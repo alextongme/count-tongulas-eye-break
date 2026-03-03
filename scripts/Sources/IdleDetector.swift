@@ -8,6 +8,13 @@ class IdleDetector {
     private var sleepObserver: NSObjectProtocol?
     private var wakeObserver: NSObjectProtocol?
 
+    // Cached state updated on a background queue every 3 seconds
+    private let pollQueue = DispatchQueue(label: "com.counttongula.idledetector", qos: .utility)
+    private var pollTimer: DispatchSourceTimer?
+    private(set) var cachedIsScreenLocked = false
+    private(set) var cachedIsDNDActive = false
+    private(set) var cachedSecondsSinceLastInput: TimeInterval = 0
+
     // MARK: - Sleep/wake monitoring
 
     func startMonitoring() {
@@ -28,6 +35,8 @@ class IdleDetector {
         ) { [weak self] _ in
             self?.isSystemSleeping = false
         }
+
+        startBackgroundPolling()
     }
 
     func stopMonitoring() {
@@ -40,11 +49,30 @@ class IdleDetector {
             workspace.removeObserver(observer)
             wakeObserver = nil
         }
+        pollTimer?.cancel()
+        pollTimer = nil
     }
 
-    // MARK: - Screen lock
+    // MARK: - Background polling
 
-    var isScreenLocked: Bool {
+    /// Moves expensive I/O (IORegistry, file reads, CGEventSource IPC) off the main thread.
+    /// Cached values are read by the 1-second UI timer without blocking compositing.
+    private func startBackgroundPolling() {
+        let timer = DispatchSource.makeTimerSource(queue: pollQueue)
+        timer.schedule(deadline: .now(), repeating: .seconds(3), leeway: .milliseconds(500))
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            self.cachedIsScreenLocked = self.pollScreenLocked()
+            self.cachedIsDNDActive = self.pollDNDActive()
+            self.cachedSecondsSinceLastInput = self.pollSecondsSinceLastInput()
+        }
+        timer.resume()
+        pollTimer = timer
+    }
+
+    // MARK: - Screen lock (IOKit IPC)
+
+    private func pollScreenLocked() -> Bool {
         let entry = IORegistryEntryFromPath(kIOMainPortDefault, "IOService:/")
         guard entry != 0 else { return false }
         defer { IOObjectRelease(entry) }
@@ -60,9 +88,11 @@ class IdleDetector {
         return value
     }
 
-    // MARK: - DND / Focus
+    var isScreenLocked: Bool { cachedIsScreenLocked }
 
-    var isDNDActive: Bool {
+    // MARK: - DND / Focus (file I/O + JSON parse)
+
+    private func pollDNDActive() -> Bool {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let assertionsURL = home
             .appendingPathComponent("Library/DoNotDisturb/DB/Assertions.json")
@@ -80,9 +110,11 @@ class IdleDetector {
         return false
     }
 
-    // MARK: - Idle detection
+    var isDNDActive: Bool { cachedIsDNDActive }
 
-    var secondsSinceLastInput: TimeInterval {
+    // MARK: - Idle detection (WindowServer IPC)
+
+    private func pollSecondsSinceLastInput() -> TimeInterval {
         let keyIdle = CGEventSource.secondsSinceLastEventType(
             .combinedSessionState, eventType: .keyDown)
         let mouseIdle = CGEventSource.secondsSinceLastEventType(
@@ -92,17 +124,19 @@ class IdleDetector {
         return min(keyIdle, min(mouseIdle, clickIdle))
     }
 
+    var secondsSinceLastInput: TimeInterval { cachedSecondsSinceLastInput }
+
     var isUserIdle: Bool {
         guard Preferences.shared.idleDetectionEnabled else { return false }
-        return secondsSinceLastInput >= TimeInterval(Preferences.shared.idleThreshold)
+        return cachedSecondsSinceLastInput >= TimeInterval(Preferences.shared.idleThreshold)
     }
 
     // MARK: - Break deferral
 
     var shouldDeferBreak: Bool {
         if isSystemSleeping { return true }
-        if isScreenLocked { return true }
-        if Preferences.shared.dndAware && isDNDActive { return true }
+        if cachedIsScreenLocked { return true }
+        if Preferences.shared.dndAware && cachedIsDNDActive { return true }
         return false
     }
 }

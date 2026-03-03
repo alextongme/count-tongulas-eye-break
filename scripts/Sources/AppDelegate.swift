@@ -29,6 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     // MARK: - NSApplicationDelegate
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installLaunchAgentIfNeeded()
         setupStatusItem()
         buildMenu()
         startIdleDetector()
@@ -72,75 +73,79 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     func buildMenu() {
         let menu = NSMenu()
 
-        countdownMenuItem = NSMenuItem(title: "Next break in --:--", action: nil, keyEquivalent: "")
+        countdownMenuItem = menuItem("Next break in --:--", emoji: "⏳")
         countdownMenuItem.isEnabled = false
         menu.addItem(countdownMenuItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        statsMenuItem = NSMenuItem(title: Statistics.shared.todaySummary(), action: nil, keyEquivalent: "")
+        statsMenuItem = menuItem(Statistics.shared.todaySummary())
         statsMenuItem.isEnabled = false
         menu.addItem(statsMenuItem)
 
-        streakMenuItem = NSMenuItem(title: "Streak: \(Statistics.shared.currentStreak) breaks", action: nil, keyEquivalent: "")
+        streakMenuItem = menuItem("Streak: \(Statistics.shared.currentStreak) breaks", emoji: "🔥")
         streakMenuItem.isEnabled = false
         menu.addItem(streakMenuItem)
 
-        approvalMenuItem = NSMenuItem(title: "Approval rating: \(Statistics.shared.approvalRating)%", action: nil, keyEquivalent: "")
+        approvalMenuItem = menuItem("Approval rating: \(Statistics.shared.approvalRating)%", emoji: "📊")
         approvalMenuItem.isEnabled = false
         menu.addItem(approvalMenuItem)
 
-        let historyItem = NSMenuItem(title: "View History...", action: #selector(showHistory), keyEquivalent: "")
-        historyItem.target = self
+        let historyItem = menuItem("View History...", emoji: "📈", action: #selector(showHistory))
         menu.addItem(historyItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        pauseMenuItem = NSMenuItem(title: "Pause", action: #selector(togglePause), keyEquivalent: "p")
+        pauseMenuItem = menuItem("Pause", emoji: "⏸️", action: #selector(togglePause), key: "p")
         pauseMenuItem.keyEquivalentModifierMask = [.command, .shift]
-        pauseMenuItem.target = self
         menu.addItem(pauseMenuItem)
 
-        let skipItem = NSMenuItem(title: "Take a Break Now", action: #selector(skipToBreak), keyEquivalent: "b")
+        let skipItem = menuItem("Take a Break Now", emoji: "👁", action: #selector(skipToBreak), key: "b")
         skipItem.keyEquivalentModifierMask = [.command, .shift]
-        skipItem.target = self
         menu.addItem(skipItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: "")
-        settingsItem.target = self
-        menu.addItem(settingsItem)
+        menu.addItem(menuItem("Settings...", emoji: "⚙️", action: #selector(showSettings)))
 
         menu.addItem(NSMenuItem.separator())
 
-        let websiteItem = NSMenuItem(title: "Visit alextong.me", action: #selector(openWebsite), keyEquivalent: "")
-        websiteItem.target = self
-        menu.addItem(websiteItem)
-
-        let musicItem = NSMenuItem(title: "🎵 Listen to my music", action: #selector(openMusic), keyEquivalent: "")
-        musicItem.target = self
-        menu.addItem(musicItem)
-
-        let donateItem = NSMenuItem(title: "❤️ Donate if you enjoy the app", action: #selector(openDonate), keyEquivalent: "")
-        donateItem.target = self
-        menu.addItem(donateItem)
-
-        let bugItem = NSMenuItem(title: "🐛 Report a bug", action: #selector(reportBug), keyEquivalent: "")
-        bugItem.target = self
-        menu.addItem(bugItem)
-
-        let featureItem = NSMenuItem(title: "💡 Request a feature", action: #selector(requestFeature), keyEquivalent: "")
-        featureItem.target = self
-        menu.addItem(featureItem)
+        menu.addItem(menuItem("Visit alextong.me", emoji: "🌐", action: #selector(openWebsite)))
+        menu.addItem(menuItem("Listen to my music", emoji: "🎵", action: #selector(openMusic)))
+        menu.addItem(menuItem("Buy me a coffee", emoji: "☕", action: #selector(openDonate)))
+        menu.addItem(menuItem("Report a bug", emoji: "🐛", action: #selector(reportBug)))
+        menu.addItem(menuItem("Request a feature", emoji: "💡", action: #selector(requestFeature)))
 
         menu.addItem(NSMenuItem.separator())
 
-        let quitItem = NSMenuItem(title: "Quit Count Tongula", action: #selector(quitApp), keyEquivalent: "")
-        quitItem.target = self
-        menu.addItem(quitItem)
+        menu.addItem(menuItem("Quit Count Tongula", emoji: "👋", action: #selector(quitApp)))
 
         statusItem.menu = menu
+    }
+
+    private func menuItem(_ title: String, emoji: String? = nil, action: Selector? = nil, key: String = "") -> NSMenuItem {
+        let item = NSMenuItem(title: title, action: action, keyEquivalent: key)
+        if action != nil { item.target = self }
+        if let emoji = emoji {
+            item.image = emojiImage(emoji)
+        }
+        return item
+    }
+
+    private func emojiImage(_ emoji: String) -> NSImage {
+        let font = NSFont.systemFont(ofSize: 14)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let str = NSAttributedString(string: emoji, attributes: attrs)
+        let textSize = str.size()
+        let imgSize = NSSize(width: 18, height: 18)
+        let img = NSImage(size: imgSize)
+        img.lockFocus()
+        let x = (imgSize.width - textSize.width) / 2
+        let y = (imgSize.height - textSize.height) / 2
+        str.draw(at: NSPoint(x: x, y: y))
+        img.unlockFocus()
+        img.isTemplate = false
+        return img
     }
 
     func updateMenuStats() {
@@ -174,7 +179,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     @objc func tick() {
         if isPaused {
             if let button = statusItem.button {
-                button.title = "⏸ Paused"
+                button.title = "⏸️ Paused"
             }
             countdownMenuItem.title = "Paused"
             return
@@ -197,15 +202,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         }
 
         // App exclusion: pause timer while excluded app is frontmost
-        if Preferences.shared.appExclusionEnabled {
-            if let bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier,
-               Preferences.shared.excludedBundleIDs.contains(bundleID) {
-                if let button = statusItem.button {
-                    button.title = "🦇 Excluded"
-                }
-                countdownMenuItem.title = "Paused (excluded app)"
-                return
+        if Preferences.shared.appExclusionEnabled && isExcludedAppFrontmost() {
+            if let button = statusItem.button {
+                button.title = "🦇 Excluded"
             }
+            countdownMenuItem.title = "Paused (excluded app)"
+            return
         }
 
         secondsUntilBreak -= 1
@@ -324,9 +326,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     @objc func togglePause() {
         isPaused = !isPaused
         pauseMenuItem.title = isPaused ? "Resume" : "Pause"
+        pauseMenuItem.image = emojiImage(isPaused ? "▶️" : "⏸️")
         if isPaused {
             if let button = statusItem.button {
-                button.title = "⏸ Paused"
+                button.title = "⏸️ Paused"
             }
             countdownMenuItem.title = "Paused"
         } else {
@@ -370,8 +373,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     }
 
     @objc func openDonate() {
-        // TODO: Replace with actual donate link
-        NSWorkspace.shared.open(URL(string: "https://alextong.me")!)
+        NSWorkspace.shared.open(URL(string: "https://buymeacoffee.com/XLd2bzbViZ")!)
     }
 
     var feedbackController: FeedbackWindowController?
@@ -425,6 +427,51 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         }
     }
 
+    // MARK: - LaunchAgent
+
+    private func installLaunchAgentIfNeeded() {
+        guard Preferences.shared.launchAtLogin else { return }
+
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let agentDir = home.appendingPathComponent("Library/LaunchAgents")
+        let plistPath = agentDir.appendingPathComponent("com.counttongula.eyebreak.plist")
+
+        guard !FileManager.default.fileExists(atPath: plistPath.path) else { return }
+
+        let binary = ProcessInfo.processInfo.arguments[0]
+        let plist = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>Label</key>
+            <string>com.counttongula.eyebreak</string>
+            <key>ProgramArguments</key>
+            <array>
+                <string>\(binary)</string>
+            </array>
+            <key>RunAtLoad</key>
+            <true/>
+            <key>KeepAlive</key>
+            <false/>
+            <key>StandardOutPath</key>
+            <string>/tmp/eye_break.log</string>
+            <key>StandardErrorPath</key>
+            <string>/tmp/eye_break.log</string>
+        </dict>
+        </plist>
+        """
+
+        try? FileManager.default.createDirectory(at: agentDir, withIntermediateDirectories: true)
+        try? plist.write(to: plistPath, atomically: true, encoding: .utf8)
+
+        let uid = getuid()
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        task.arguments = ["bootstrap", "gui/\(uid)", plistPath.path]
+        try? task.run()
+    }
+
     // MARK: - Helpers
 
     func formatTime(_ seconds: Int) -> String {
@@ -432,5 +479,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         let m = s / 60
         let r = s % 60
         return String(format: "%02d:%02d", m, r)
+    }
+
+    // MARK: - App Exclusion (cached)
+
+    private var cachedExcludedBundleID: String?
+    private var lastExclusionCheck: TimeInterval = 0
+
+    /// Checks frontmost app against exclusion list, caching the result for 2 seconds
+    /// to avoid IPC to NSWorkspace on every 1-second tick.
+    func isExcludedAppFrontmost() -> Bool {
+        let now = ProcessInfo.processInfo.systemUptime
+        if now - lastExclusionCheck > 2 {
+            lastExclusionCheck = now
+            cachedExcludedBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        }
+        guard let bundleID = cachedExcludedBundleID else { return false }
+        return Preferences.shared.excludedBundleIDs.contains(bundleID)
     }
 }

@@ -171,10 +171,10 @@ Count Tongula tracks your devotion. Stats are stored in `~/Library/Application S
 
 ### Architecture
 
-Single binary compiled from `scripts/Sources/*.swift` using `swiftc`. No external dependencies.
+Single binary compiled from `scripts/Sources/*.swift` using SwiftPM. Depends on [Lottie](https://github.com/airbnb/lottie-ios) for animations.
 
 ```
-scripts/Sources/*.swift  -->  eye_break_ui (single binary, swiftc -O)
+scripts/Sources/*.swift  -->  eye_break_ui (single binary, SwiftPM)
                               |
                               +-- NSStatusItem (menu bar + countdown)
                               +-- BreakWindowController (eye + long breaks)

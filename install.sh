@@ -54,12 +54,8 @@ rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
-# Launcher script inside the .app — runs the persistent Swift binary directly
-cat > "$APP_BUNDLE/Contents/MacOS/run" <<'LAUNCHER'
-#!/bin/bash
-exec "$HOME/.eye-break/eye_break_ui"
-LAUNCHER
-chmod +x "$APP_BUNDLE/Contents/MacOS/run"
+# Symlink binary into the .app bundle
+ln -sf "$INSTALL_DIR/eye_break_ui" "$APP_BUNDLE/Contents/MacOS/eye_break_ui"
 
 # Copy icon
 cp "$REPO_DIR/assets/AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
@@ -77,7 +73,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <key>CFBundleIdentifier</key>
     <string>$AGENT_LABEL</string>
     <key>CFBundleExecutable</key>
-    <string>run</string>
+    <string>eye_break_ui</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSUIElement</key>
@@ -86,40 +82,6 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 ok "App bundle created"
-
-# ── Create LaunchAgent ──
-info "Setting up LaunchAgent ..."
-mkdir -p "$AGENT_DIR"
-
-cat > "$AGENT_PLIST" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>$AGENT_LABEL</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>$APP_BUNDLE/Contents/MacOS/run</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/eye_break.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/eye_break.log</string>
-</dict>
-</plist>
-EOF
-ok "LaunchAgent created"
-
-# ── Load the daemon ──
-info "Loading daemon ..."
-launchctl bootout "gui/$(id -u)" "$AGENT_PLIST" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$AGENT_PLIST"
-ok "Daemon loaded"
 
 echo ""
 echo "  🦇 Count Tongula will remind you to rest your eyes."

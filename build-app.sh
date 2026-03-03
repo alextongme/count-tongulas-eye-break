@@ -55,47 +55,6 @@ if [ -d "$REPO_DIR/assets/animations" ]; then
     cp "$REPO_DIR/assets/animations/"*.json "$APP_BUNDLE/Contents/Resources/assets/animations/"
 fi
 
-# Launcher script that sets up LaunchAgent on first run, then executes the binary
-cat > "$APP_BUNDLE/Contents/MacOS/run" <<'LAUNCHER'
-#!/bin/bash
-BUNDLE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-BINARY="$BUNDLE_DIR/MacOS/eye_break_ui"
-AGENT_LABEL="com.counttongula.eyebreak"
-AGENT_DIR="$HOME/Library/LaunchAgents"
-AGENT_PLIST="$AGENT_DIR/$AGENT_LABEL.plist"
-
-# Install LaunchAgent on first run (or if plist is missing)
-if [ ! -f "$AGENT_PLIST" ]; then
-    mkdir -p "$AGENT_DIR"
-    cat > "$AGENT_PLIST" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>$AGENT_LABEL</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>$BINARY</string>
-    </array>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <true/>
-    <key>StandardOutPath</key>
-    <string>/tmp/eye_break.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/eye_break.log</string>
-</dict>
-</plist>
-EOF
-    launchctl bootstrap "gui/$(id -u)" "$AGENT_PLIST" 2>/dev/null || true
-fi
-
-exec "$BINARY"
-LAUNCHER
-chmod +x "$APP_BUNDLE/Contents/MacOS/run"
-
 # Info.plist
 cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -113,7 +72,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <key>CFBundleShortVersionString</key>
     <string>$VERSION</string>
     <key>CFBundleExecutable</key>
-    <string>run</string>
+    <string>eye_break_ui</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>LSUIElement</key>
