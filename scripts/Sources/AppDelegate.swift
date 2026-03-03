@@ -107,6 +107,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
         websiteItem.target = self
         menu.addItem(websiteItem)
 
+        let musicItem = NSMenuItem(title: "🎵 Listen to my music", action: #selector(openMusic), keyEquivalent: "")
+        musicItem.target = self
+        menu.addItem(musicItem)
+
+        let donateItem = NSMenuItem(title: "❤️ Donate if you enjoy the app", action: #selector(openDonate), keyEquivalent: "")
+        donateItem.target = self
+        menu.addItem(donateItem)
+
         menu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(title: "Quit Count Tongula", action: #selector(quitApp), keyEquivalent: "")
@@ -295,6 +303,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate {
     }
 
     @objc func openWebsite() {
+        NSWorkspace.shared.open(URL(string: "https://alextong.me")!)
+    }
+
+    @objc func openMusic() {
+        NSWorkspace.shared.open(URL(string: "https://suimamusic.com")!)
+    }
+
+    @objc func openDonate() {
+        // TODO: Replace with actual donate link
         NSWorkspace.shared.open(URL(string: "https://alextong.me")!)
     }
 
