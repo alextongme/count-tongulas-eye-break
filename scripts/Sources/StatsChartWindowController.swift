@@ -63,7 +63,7 @@ class StatsChartWindowController: NSObject {
         segContainer.addSubview(segStack)
 
         for (i, label) in labels.enumerated() {
-            let btn = NSButton()
+            let btn = PointerButton()
             btn.isBordered = false
             btn.wantsLayer = true
             btn.tag = i

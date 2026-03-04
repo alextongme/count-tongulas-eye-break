@@ -141,6 +141,11 @@ class ProgressBarView: NSView {
     }
 }
 
+// ─── Pointer Button (plain button with pointing-hand cursor) ────────
+class PointerButton: NSButton {
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
+}
+
 // ─── Hover Button ────────────────────────────────────────────────────
 class HoverButton: NSButton {
     private let normalBg: NSColor
