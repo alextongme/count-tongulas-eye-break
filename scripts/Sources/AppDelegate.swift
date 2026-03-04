@@ -42,7 +42,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         registerCustomFonts()
-        installLaunchAgentIfNeeded()
+        removeLegacyLaunchAgent()
         setupStatusItem()
         buildMenu()
         startIdleDetector()
@@ -182,8 +182,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
-        // Force a fresh countdown so throttled values don't appear stale
-        if !isPaused && !IdleDetector.shared.shouldDeferBreak {
+        // Force a fresh countdown so throttled values don't appear stale.
+        // Skip during snooze — the snooze timer manages its own display.
+        if !isPaused && !IdleDetector.shared.shouldDeferBreak && snoozeTimer == nil {
             updateStatusDisplay()
         }
         let blocked = hasOpenWindow
@@ -460,55 +461,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         }
     }
 
-    // MARK: - LaunchAgent
+    // MARK: - Legacy LaunchAgent Cleanup
 
-    private func installLaunchAgentIfNeeded() {
-        guard Preferences.shared.launchAtLogin else { return }
-
+    /// Older versions installed a LaunchAgent plist to handle launch-at-login.
+    /// Now that install.sh launches via the .app bundle, macOS Login Items handles
+    /// this natively. Remove the old plist so users don't see a duplicate entry.
+    private func removeLegacyLaunchAgent() {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let agentDir = home.appendingPathComponent("Library/LaunchAgents")
-        let plistPath = agentDir.appendingPathComponent("com.counttongula.eyebreak.plist")
-
-        guard !FileManager.default.fileExists(atPath: plistPath.path) else { return }
-
-        guard let binary = Bundle.main.executableURL?.path else { return }
-        let escapedBinary = binary
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
-            .replacingOccurrences(of: "'", with: "&apos;")
-        let plist = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>Label</key>
-            <string>com.counttongula.eyebreak</string>
-            <key>ProgramArguments</key>
-            <array>
-                <string>\(escapedBinary)</string>
-            </array>
-            <key>RunAtLoad</key>
-            <true/>
-            <key>KeepAlive</key>
-            <false/>
-            <key>StandardOutPath</key>
-            <string>/tmp/eye_break.log</string>
-            <key>StandardErrorPath</key>
-            <string>/tmp/eye_break.log</string>
-        </dict>
-        </plist>
-        """
-
-        try? FileManager.default.createDirectory(at: agentDir, withIntermediateDirectories: true)
-        try? plist.write(to: plistPath, atomically: true, encoding: .utf8)
+        let plistPath = home.appendingPathComponent("Library/LaunchAgents/com.counttongula.eyebreak.plist")
+        guard FileManager.default.fileExists(atPath: plistPath.path) else { return }
 
         let uid = getuid()
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["bootstrap", "gui/\(uid)", plistPath.path]
+        task.arguments = ["bootout", "gui/\(uid)", plistPath.path]
         try? task.run()
+        task.waitUntilExit()
+
+        try? FileManager.default.removeItem(at: plistPath)
     }
 
     // MARK: - Helpers

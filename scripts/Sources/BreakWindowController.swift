@@ -241,8 +241,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         }
 
         // Show companion windows on all other screens
-        let primaryScreen = targetScreen ?? NSScreen.main
-        for screen in NSScreen.screens where screen !== primaryScreen {
+        let primaryFrame = (targetScreen ?? NSScreen.main)?.frame
+        for screen in NSScreen.screens where screen.frame != primaryFrame {
             let comp = buildCompanion(on: screen)
             companions.append(comp)
         }
