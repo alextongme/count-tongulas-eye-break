@@ -424,7 +424,17 @@ class SettingsWindowController: NSObject {
     }
 
     @objc func strictToggleChanged() {
-        Preferences.shared.strictMode = strictToggle.state == .on
+        let enabled = strictToggle.state == .on
+        Preferences.shared.strictMode = enabled
+
+        if enabled {
+            let alert = NSAlert()
+            alert.messageText = "Strict Mode Enabled"
+            alert.informativeText = "In case of emergencies, you can still quit the app from the menu bar by clicking on the 🦇 icon."
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "Got it!")
+            alert.runModal()
+        }
     }
 
     @objc func appExclusionToggleChanged() {
