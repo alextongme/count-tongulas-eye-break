@@ -16,7 +16,7 @@ class UpdateAlertController: NSObject {
         self.release = release
 
         let W: CGFloat = 420
-        let H: CGFloat = 320
+        let H: CGFloat = 300
 
         let win = UpdateAlertWindow(
             contentRect: NSRect(x: 0, y: 0, width: W, height: H),
@@ -101,7 +101,7 @@ class UpdateAlertController: NSObject {
         notes.maximumNumberOfLines = 4
         notes.frame = NSRect(x: pad, y: y - 50, width: contentW, height: 60)
         cv.addSubview(notes)
-        y -= 80
+        y -= 100
 
         // Download button
         let downloadBtn = HoverButton("Download Update", bg: Drac.purple, hover: Drac.pink,
@@ -109,7 +109,7 @@ class UpdateAlertController: NSObject {
         downloadBtn.translatesAutoresizingMaskIntoConstraints = true
         downloadBtn.frame = NSRect(x: (W - 200) / 2, y: y, width: 200, height: 44)
         cv.addSubview(downloadBtn)
-        y -= 32
+        y -= 30
 
         // Remind me later
         let remindBtn = HoverLink("Remind Me Later", color: Drac.comment, hover: Drac.foreground,
@@ -118,7 +118,7 @@ class UpdateAlertController: NSObject {
         remindBtn.sizeToFit()
         remindBtn.frame = NSRect(x: (W - remindBtn.frame.width) / 2, y: y, width: remindBtn.frame.width, height: 20)
         cv.addSubview(remindBtn)
-        y -= 24
+        y -= 22
 
         // Skip this version
         let skipBtn = HoverLink("Skip This Version", color: Drac.comment, hover: Drac.foreground,
