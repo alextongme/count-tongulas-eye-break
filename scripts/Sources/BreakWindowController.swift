@@ -212,14 +212,14 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         av.translatesAutoresizingMaskIntoConstraints = false
         self.lottieView = av
 
-        // Restore animations after wake from sleep — CAAnimations freeze when
-        // macOS suspends the render server and the media-time clock jumps forward.
+        // On wake from sleep, auto-dismiss the break — the user was away and
+        // effectively took a rest. This also resets the interval timer.
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.restoreAnimationsAfterWake()
+            self?.finishWithResult(.completed)
         }
 
         layout()
