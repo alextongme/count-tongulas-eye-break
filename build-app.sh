@@ -31,7 +31,7 @@ mkdir -p "$BUILD_DIR"
 
 # ── Compile ──
 info "Compiling (Swift Package Manager) ..."
-swift build -c release --package-path "$REPO_DIR" 2>&1
+swift build -c release --arch arm64 --arch x86_64 --package-path "$REPO_DIR" 2>&1
 cp "$REPO_DIR/.build/release/eye_break_ui" "$BUILD_DIR/eye_break_ui"
 ok "Binary compiled"
 
