@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Count Tongula's Eye Break</title>
+        <item>
+            <title>Version 0.10.0</title>
+            <pubDate>Thu, 05 Mar 2026 16:12:48 -0500</pubDate>
+            <sparkle:version>0.10.0</sparkle:version>
+            <sparkle:shortVersionString>0.10.0</sparkle:shortVersionString>
+            <enclosure
+                url="https://github.com/alextongme/count-tongulas-eye-break/releases/download/v0.10.0/CountTongulasEyeBreak-0.10.0.dmg"
+                sparkle:edSignature="Zy7YTIPN0x+a7Lwywz1g5TjkXKbGVldxcyeoQzJS/KEPmAxHdPdyoxKBSn51OQiKlRkU2y3lBeCJyRgv5B8xBw=="
+                length="11778085"
+                type="application/octet-stream"
+            />
+        </item>
+    </channel>
+</rss>

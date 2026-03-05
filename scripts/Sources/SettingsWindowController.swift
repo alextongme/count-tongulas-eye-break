@@ -1,4 +1,5 @@
 import Cocoa
+import Sparkle
 
 // Borderless window that can become key
 private class SettingsWindow: NSWindow {
@@ -442,7 +443,11 @@ class SettingsWindowController: NSObject {
     }
 
     @objc func autoUpdateToggleChanged() {
-        Preferences.shared.autoUpdateEnabled = autoUpdateToggle.state == .on
+        let enabled = autoUpdateToggle.state == .on
+        Preferences.shared.autoUpdateEnabled = enabled
+        if let appDelegate = NSApp.delegate as? AppDelegate {
+            appDelegate.updaterController.updater.automaticallyChecksForUpdates = enabled
+        }
     }
 
     @objc func restoreDefaults() {

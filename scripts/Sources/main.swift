@@ -1,6 +1,6 @@
 import Cocoa
 
-let appVersion = "0.8.0"
+let appVersion = "0.10.0"
 
 // ── Single-instance guard ────────────────────────────────────────────
 // Skip lock for development/preview modes so they don't block normal app operation.

@@ -53,6 +53,13 @@ mkdir -p "$APP_BUNDLE/Contents/Resources/assets"
 # Copy binary directly (no symlinks — fully standalone)
 cp "$BUILD_DIR/eye_break_ui" "$APP_BUNDLE/Contents/MacOS/eye_break_ui"
 
+# Embed Sparkle framework
+SPARKLE_FW="$REPO_DIR/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
+mkdir -p "$APP_BUNDLE/Contents/Frameworks"
+cp -R "$SPARKLE_FW" "$APP_BUNDLE/Contents/Frameworks/"
+# Set rpath so the binary finds the embedded framework
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP_BUNDLE/Contents/MacOS/eye_break_ui"
+
 # Copy assets
 cp "$REPO_DIR/assets/alex_final.png" "$APP_BUNDLE/Contents/Resources/assets/"
 cp "$REPO_DIR/assets/dracula.png" "$APP_BUNDLE/Contents/Resources/assets/"
@@ -93,6 +100,10 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
     <true/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/alextongme/count-tongulas-eye-break/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>mMeJeZNu41QLWirdyTD43i5H8PayL6JxP+McRHmkwgY=</string>
 </dict>
 </plist>
 PLIST
@@ -125,6 +136,43 @@ rm -rf "$DMG_TEMP"
 ok "DMG created → dist/$DMG_NAME"
 ok "DMG copied → dist/CountTongulasEyeBreak.dmg (stable download URL)"
 
+# ── Sparkle EdDSA signature ──
+SIGN_TOOL="$REPO_DIR/.build/artifacts/sparkle/Sparkle/bin/sign_update"
+info "Signing archive for Sparkle ..."
+SPARKLE_SIG=$("$SIGN_TOOL" "$BUILD_DIR/$DMG_NAME" 2>&1)
+ok "Sparkle signature generated"
+
+# Parse signature components
+ED_SIGNATURE=$(echo "$SPARKLE_SIG" | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
+FILE_LENGTH=$(echo "$SPARKLE_SIG" | grep -o 'length="[^"]*"' | cut -d'"' -f2)
+PUB_DATE=$(date -R)
+DOWNLOAD_URL="https://github.com/alextongme/count-tongulas-eye-break/releases/download/v${VERSION}/${DMG_NAME}"
+
+# ── Update appcast.xml ──
+info "Updating appcast.xml ..."
+APPCAST="$REPO_DIR/appcast.xml"
+cat > "$APPCAST" <<APPCAST_EOF
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>Count Tongula's Eye Break</title>
+        <item>
+            <title>Version ${VERSION}</title>
+            <pubDate>${PUB_DATE}</pubDate>
+            <sparkle:version>${VERSION}</sparkle:version>
+            <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+            <enclosure
+                url="${DOWNLOAD_URL}"
+                sparkle:edSignature="${ED_SIGNATURE}"
+                length="${FILE_LENGTH}"
+                type="application/octet-stream"
+            />
+        </item>
+    </channel>
+</rss>
+APPCAST_EOF
+ok "appcast.xml updated"
+
 # ── SHA256 for Cask ──
 SHA=$(shasum -a 256 "$ZIP_NAME" | awk '{print $1}')
 DMG_SHA=$(shasum -a 256 "$DMG_NAME" | awk '{print $1}')
@@ -138,5 +186,6 @@ echo ""
 echo "  To release:"
 echo "     1. Create a GitHub release tagged v${VERSION}"
 echo "     2. Upload dist/$ZIP_NAME and dist/$DMG_NAME to the release"
-echo "     3. Update the Homebrew Cask with the new URL and SHA"
+echo "     3. Commit and push appcast.xml (Sparkle auto-update feed)"
+echo "     4. Update the Homebrew Cask with the new URL and SHA"
 echo ""

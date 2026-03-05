@@ -1,4 +1,5 @@
 import Cocoa
+import Sparkle
 // UserNotifications removed — triggers mic permission prompt on macOS 26
 // and crashes without a proper bundle proxy. The app shows its own break
 // window and plays sounds via NSSound, so push notifications aren't needed.
@@ -22,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
     var settingsController: SettingsWindowController?
     var onboardingController: OnboardingController?
     var statsChartController: StatsChartWindowController?
-    var updateAlertController: UpdateAlertController?
+    var updaterController: SPUStandardUpdaterController!
 
     private var lastTickWasSpecial = false
 
@@ -63,13 +64,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         )
 
 
-        setupUpdateChecker()
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: nil,
+            userDriverDelegate: nil
+        )
 
         if !Preferences.shared.hasCompletedOnboarding {
             showOnboarding()
         } else {
             startTimer()
-            UpdateChecker.shared.checkIfNeeded()
         }
     }
 
@@ -182,7 +186,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         if let w = statsChartController?.window, w.isVisible { return true }
         if let w = feedbackController?.window, w.isVisible { return true }
         if let w = onboardingController?.window, w.isVisible { return true }
-        if let w = updateAlertController?.window, w.isVisible { return true }
+        // Sparkle manages its own update windows
         return false
     }
 
@@ -445,11 +449,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
     }
 
     @objc func checkForUpdates() {
-        UpdateChecker.shared.checkNow()
+        updaterController.checkForUpdates(nil)
     }
 
     @objc func quitApp() {
-        UpdateChecker.shared.stopTimer()
         IdleDetector.shared.stopMonitoring()
         NSApp.terminate(nil)
     }
@@ -468,17 +471,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         onboardingController = nil
         if breakTimer == nil {
             startTimer()
-        }
-        UpdateChecker.shared.checkIfNeeded()
-    }
-
-    private func setupUpdateChecker() {
-        UpdateChecker.shared.onUpdateAvailable = { [weak self] release, currentVersion in
-            self?.updateAlertController = UpdateAlertController(release: release, currentVersion: currentVersion)
-        }
-        UpdateChecker.shared.onUpToDate = { [weak self] in
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? appVersion
-            self?.updateAlertController = UpdateAlertController(currentVersion: version)
         }
     }
 
