@@ -759,7 +759,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
                 backing: .buffered,
                 defer: false
             )
-            panel.backgroundColor = Drac.background.withAlphaComponent(0.85)
+            panel.backgroundColor = Drac.background.withAlphaComponent(0.92)
             panel.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue - 1)
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.isMovableByWindowBackground = false
@@ -777,7 +777,6 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             if Preferences.shared.cloudsEnabled {
                 addOverlayClouds(to: panel, screenFrame: screen.frame)
             }
-            addOverlayBats(to: panel, screenFrame: screen.frame)
         }
     }
 
@@ -786,312 +785,150 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         cv.wantsLayer = true
         cv.layer?.masksToBounds = true
 
-        let cloudPath = assetPath("clouds.png")
-        guard let cloudImage = NSImage(contentsOfFile: cloudPath),
-              let cgImage = cloudImage.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        else { return }
-
         let screenW = screenFrame.width
         let h = screenFrame.height
-        let imageAspect = CGFloat(cgImage.width) / CGFloat(cgImage.height)
-        let layerW = max(ceil(imageAspect * h), screenW)
 
-        // Single image — no tiling, no seams. Pan back and forth across the screen.
-        let cloudLayer = CALayer()
-        cloudLayer.frame = CGRect(x: 0, y: 0, width: layerW, height: h)
-        cloudLayer.contents = cgImage
-        cloudLayer.contentsGravity = .resizeAspectFill
-        cloudLayer.opacity = 0
-        cv.layer?.addSublayer(cloudLayer)
+        // Load two fog textures (matching the alextong.me layered fog)
+        let fog1Path = assetPath("fog1-baked.png")
+        let fog2Path = assetPath("fog2-baked.png")
+        guard let fog1Image = NSImage(contentsOfFile: fog1Path),
+              let fog1CG = fog1Image.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let fog2Image = NSImage(contentsOfFile: fog2Path),
+              let fog2CG = fog2Image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+        else { return }
 
-        let panDistance = layerW - screenW
-        if panDistance > 0 {
-            // Match the original scroll speed (~48pt/s)
-            let speed: CGFloat = 64.0
-            let duration = Double(panDistance / speed)
-            let scroll = CABasicAnimation(keyPath: "position.x")
-            scroll.fromValue = layerW / 2
-            scroll.toValue = layerW / 2 - panDistance
-            scroll.duration = max(duration, 5)
-            scroll.autoreverses = true
-            scroll.repeatCount = .infinity
-            scroll.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            cloudLayer.add(scroll, forKey: "scroll")
+        // Container for all fog layers
+        let fogContainer = CALayer()
+        fogContainer.frame = CGRect(x: 0, y: 0, width: screenW, height: h)
+        fogContainer.masksToBounds = true
+        cv.layer?.addSublayer(fogContainer)
+
+        // Purple tint behind the fog (Dracula purple #BD93F9)
+        let tintLayer = CALayer()
+        tintLayer.frame = CGRect(x: 0, y: 0, width: screenW, height: h)
+        tintLayer.backgroundColor = Drac.purple.cgColor
+        tintLayer.opacity = 0.15
+        fogContainer.addSublayer(tintLayer)
+
+        // Each layer is 200% screen width, two fog images side by side with soft-edge masks,
+        // drifting left infinitely. Different speeds + opacity pulses create depth.
+        struct FogLayerSpec {
+            let cgImage: CGImage
+            let driftDuration: Double       // how long to scroll one full 50% (left loop)
+            let opacityKeys: [NSNumber]     // keyTimes
+            let opacityVals: [Float]        // opacity values at each keyTime
+            let opacityDuration: Double
+            let bobDuration: Double
+            let bobKeyframes: [CGFloat]     // translateY keyframes (4 values: 0%, ~25%, ~50%, ~75%)
         }
 
-        // Fade in
+        let layers: [FogLayerSpec] = [
+            FogLayerSpec(
+                cgImage: fog1CG,
+                driftDuration: 60,
+                opacityKeys: [0, 0.22, 0.40, 0.58, 0.80, 1.0],
+                opacityVals: [0.18, 0.26, 0.21, 0.24, 0.18, 0.18],
+                opacityDuration: 30,
+                bobDuration: 18,
+                bobKeyframes: [0, -6, 4, -3]
+            ),
+            FogLayerSpec(
+                cgImage: fog2CG,
+                driftDuration: 45,
+                opacityKeys: [0, 0.25, 0.50, 0.80, 1.0],
+                opacityVals: [0.15, 0.10, 0.08, 0.13, 0.15],
+                opacityDuration: 42,
+                bobDuration: 24,
+                bobKeyframes: [0, 5, -7, 2]
+            ),
+            FogLayerSpec(
+                cgImage: fog2CG,
+                driftDuration: 35,
+                opacityKeys: [0, 0.27, 0.52, 0.68, 1.0],
+                opacityVals: [0.12, 0.06, 0.10, 0.06, 0.12],
+                opacityDuration: 36,
+                bobDuration: 14,
+                bobKeyframes: [0, -4, 6, -2]
+            ),
+        ]
+
+        for spec in layers {
+            let stripW = screenW * 2
+            let imgAspect = CGFloat(spec.cgImage.width) / CGFloat(spec.cgImage.height)
+            let singleW = max(ceil(imgAspect * h), screenW * 0.7)
+
+            // Bob container — vertical floating motion
+            let bobLayer = CALayer()
+            bobLayer.frame = CGRect(x: 0, y: 0, width: stripW, height: h)
+
+            // Two copies of the fog image, side by side, with soft-edge gradient masks
+            for i in 0..<2 {
+                let img = CALayer()
+                let xOff = CGFloat(i) * singleW * 0.5 - singleW * 0.1
+                img.frame = CGRect(x: xOff, y: 0, width: singleW, height: h)
+                img.contents = spec.cgImage
+                img.contentsGravity = .resizeAspectFill
+
+                // Soft-edge gradient mask (transparent → opaque → opaque → transparent)
+                let mask = CAGradientLayer()
+                mask.frame = img.bounds
+                mask.startPoint = CGPoint(x: 0, y: 0.5)
+                mask.endPoint = CGPoint(x: 1, y: 0.5)
+                mask.colors = [
+                    NSColor.clear.cgColor,
+                    NSColor.black.cgColor,
+                    NSColor.black.cgColor,
+                    NSColor.clear.cgColor,
+                ]
+                mask.locations = [0, 0.2, 0.8, 1.0]
+                img.mask = mask
+
+                bobLayer.addSublayer(img)
+            }
+
+            // Bob animation
+            let bob = CAKeyframeAnimation(keyPath: "transform.translation.y")
+            bob.values = spec.bobKeyframes.map { NSNumber(value: Double($0)) }
+            bob.keyTimes = [0, 0.27, 0.52, 0.78]
+            bob.duration = spec.bobDuration
+            bob.repeatCount = .infinity
+            bob.calculationMode = .cubic
+            bobLayer.add(bob, forKey: "bob")
+
+            // Drift container — horizontal infinite scroll
+            let driftLayer = CALayer()
+            driftLayer.frame = CGRect(x: 0, y: 0, width: stripW, height: h)
+            driftLayer.addSublayer(bobLayer)
+
+            let drift = CABasicAnimation(keyPath: "transform.translation.x")
+            drift.fromValue = 0
+            drift.toValue = -stripW * 0.5
+            drift.duration = spec.driftDuration
+            drift.repeatCount = .infinity
+            drift.timingFunction = CAMediaTimingFunction(name: .linear)
+            driftLayer.add(drift, forKey: "drift")
+
+            // Opacity pulse
+            let opacityAnim = CAKeyframeAnimation(keyPath: "opacity")
+            opacityAnim.values = spec.opacityVals.map { NSNumber(value: $0) }
+            opacityAnim.keyTimes = spec.opacityKeys
+            opacityAnim.duration = spec.opacityDuration
+            opacityAnim.repeatCount = .infinity
+            opacityAnim.calculationMode = .linear
+            driftLayer.add(opacityAnim, forKey: "opacityPulse")
+
+            fogContainer.addSublayer(driftLayer)
+        }
+
+        // Fade in the entire fog wrapper
+        fogContainer.opacity = 0
         let fadeIn = CABasicAnimation(keyPath: "opacity")
         fadeIn.fromValue = 0
-        fadeIn.toValue = 0.35
+        fadeIn.toValue = 1.0
         fadeIn.duration = 2.5
         fadeIn.fillMode = .forwards
         fadeIn.isRemovedOnCompletion = false
-        cloudLayer.add(fadeIn, forKey: "fadeIn")
-    }
-
-    // MARK: - Overlay Bats
-
-    private func addOverlayBats(to panel: NSPanel, screenFrame: NSRect) {
-        guard let cv = panel.contentView else { return }
-
-        let screenW = screenFrame.width
-        let screenH = screenFrame.height
-        let batColor = NSColor(srgbRed: 0.10, green: 0.08, blue: 0.16, alpha: 1).cgColor
-
-        // --- Helpers ---
-
-        func addBat(
-            wingspan: CGFloat,
-            opacity: Float,
-            flapSpeed: Double,
-            fadeDelay: Double,
-            addFlight: (CAShapeLayer) -> Void
-        ) {
-            let bat = CAShapeLayer()
-            bat.fillColor = batColor
-            bat.strokeColor = nil
-            bat.opacity = 0
-            bat.path = batSilhouettePath(wingspan: wingspan, flapPhase: 0)
-            cv.layer?.addSublayer(bat)
-
-            // Wing flap
-            let wingsUp = batSilhouettePath(wingspan: wingspan, flapPhase: 0)
-            let wingsDown = batSilhouettePath(wingspan: wingspan, flapPhase: 0.5)
-            let flap = CAKeyframeAnimation(keyPath: "path")
-            flap.values = [wingsUp, wingsDown, wingsUp]
-            flap.keyTimes = [0, 0.5, 1]
-            flap.duration = flapSpeed
-            flap.repeatCount = .infinity
-            flap.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            bat.add(flap, forKey: "flap")
-
-            // Random base rotation so they aren't all perfectly level
-            let baseAngle = CGFloat.random(in: -CGFloat.pi * 0.1...CGFloat.pi * 0.1)
-            bat.setAffineTransform(CGAffineTransform(rotationAngle: baseAngle))
-
-            // Rocking rotation — ~60% of bats wobble, rest stay fixed
-            if Double.random(in: 0...1) < 0.6 {
-                let wobble = CABasicAnimation(keyPath: "transform.rotation.z")
-                wobble.fromValue = baseAngle - CGFloat.pi * CGFloat.random(in: 0.01...0.08)
-                wobble.toValue = baseAngle + CGFloat.pi * CGFloat.random(in: 0.01...0.08)
-                wobble.duration = Double.random(in: 1.5...4.0)
-                wobble.autoreverses = true
-                wobble.repeatCount = .infinity
-                wobble.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                bat.add(wobble, forKey: "wobble")
-            }
-
-            // Flight (or hover) — caller decides
-            addFlight(bat)
-
-            // Fade in
-            let fadeIn = CABasicAnimation(keyPath: "opacity")
-            fadeIn.fromValue = 0
-            fadeIn.toValue = opacity
-            fadeIn.duration = Double.random(in: 1.5...3.0)
-            fadeIn.beginTime = CACurrentMediaTime() + fadeDelay
-            fadeIn.fillMode = .both
-            fadeIn.isRemovedOnCompletion = false
-            bat.add(fadeIn, forKey: "fadeIn")
-        }
-
-        // --- Flying bats: cross the screen on varied bezier paths ---
-
-        let flyingCount = Int.random(in: 25...35)
-        for _ in 0..<flyingCount {
-            let wingspan = CGFloat.random(in: 15...110)
-            // Depth layers: smaller + fainter = behind fog, larger + brighter = in front
-            let depthFactor = Float(wingspan - 15) / 95.0   // 0 (tiny) → 1 (large)
-            let opacity = Float.random(in: 0.15...0.35) + depthFactor * 0.30
-
-            let goingRight = Bool.random()
-            let goingUp = Bool.random()
-            let startX: CGFloat = goingRight ? -wingspan * 2 : screenW + wingspan * 2
-            let endX: CGFloat = goingRight ? screenW + wingspan * 2 : -wingspan * 2
-
-            // Full vertical range — use the entire screen including edges
-            let startY = CGFloat.random(in: -wingspan...screenH + wingspan)
-            let endY = CGFloat.random(in: -wingspan...screenH + wingspan)
-
-            // Control points spread across the full screen area including edges
-            let cp1 = CGPoint(
-                x: goingRight ? CGFloat.random(in: -screenW * 0.1...screenW * 0.55)
-                              : CGFloat.random(in: screenW * 0.45...screenW * 1.1),
-                y: goingUp ? CGFloat.random(in: screenH * 0.3...screenH * 1.1)
-                           : CGFloat.random(in: -screenH * 0.1...screenH * 0.7)
-            )
-            let cp2 = CGPoint(
-                x: goingRight ? CGFloat.random(in: screenW * 0.45...screenW * 1.1)
-                              : CGFloat.random(in: -screenW * 0.1...screenW * 0.55),
-                y: CGFloat.random(in: -screenH * 0.1...screenH * 1.1)
-            )
-
-            let flightPath = CGMutablePath()
-            flightPath.move(to: CGPoint(x: startX, y: startY))
-            flightPath.addCurve(to: CGPoint(x: endX, y: endY), control1: cp1, control2: cp2)
-
-            let stagger = Double.random(in: 0...5)
-            let speed = Double.random(in: 5...20)
-
-            addBat(
-                wingspan: wingspan,
-                opacity: opacity,
-                flapSpeed: Double.random(in: 0.2...0.5),
-                fadeDelay: stagger + 0.5
-            ) { bat in
-                let flight = CAKeyframeAnimation(keyPath: "position")
-                flight.path = flightPath
-                flight.duration = speed
-                flight.repeatCount = .infinity
-                flight.calculationMode = .paced
-                flight.beginTime = CACurrentMediaTime() + stagger
-                flight.fillMode = .both
-                bat.add(flight, forKey: "flight")
-
-                // Vertical bob — ~70% of flying bats
-                if Double.random(in: 0...1) < 0.7 {
-                    let bob = CABasicAnimation(keyPath: "transform.translation.y")
-                    bob.fromValue = -wingspan * CGFloat.random(in: 0.08...0.2)
-                    bob.toValue = wingspan * CGFloat.random(in: 0.08...0.2)
-                    bob.duration = Double.random(in: 1.2...3.5)
-                    bob.autoreverses = true
-                    bob.repeatCount = .infinity
-                    bob.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    bat.add(bob, forKey: "bob")
-                }
-
-                // Depth scale — ~50% of flying bats
-                if Double.random(in: 0...1) < 0.5 {
-                    let depth = CABasicAnimation(keyPath: "transform.scale")
-                    depth.fromValue = CGFloat.random(in: 0.82...0.98)
-                    depth.toValue = CGFloat.random(in: 1.02...1.18)
-                    depth.duration = Double.random(in: 4...10)
-                    depth.autoreverses = true
-                    depth.repeatCount = .infinity
-                    depth.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    bat.add(depth, forKey: "depth")
-                }
-            }
-        }
-
-        // --- Hovering bats: stationary, just flapping in place ---
-
-        let hoverCount = Int.random(in: 10...18)
-        for _ in 0..<hoverCount {
-            let wingspan = CGFloat.random(in: 10...60)
-            let depthFactor = Float(wingspan - 10) / 50.0
-            let opacity = Float.random(in: 0.10...0.30) + depthFactor * 0.20
-
-            // Place across the full screen, including near edges and corners
-            let posX = CGFloat.random(in: screenW * 0.01...screenW * 0.99)
-            let posY = CGFloat.random(in: screenH * 0.02...screenH * 0.98)
-
-            addBat(
-                wingspan: wingspan,
-                opacity: opacity,
-                flapSpeed: Double.random(in: 0.3...0.7),
-                fadeDelay: Double.random(in: 0.5...4)
-            ) { bat in
-                bat.position = CGPoint(x: posX, y: posY)
-
-                // Gentle drift — ~75% drift around, rest stay truly fixed
-                if Double.random(in: 0...1) < 0.75 {
-                    let range = CGFloat.random(in: 3...25)
-                    let drift = CABasicAnimation(keyPath: "position")
-                    drift.fromValue = NSValue(point: NSPoint(
-                        x: posX - CGFloat.random(in: 2...range),
-                        y: posY - CGFloat.random(in: 2...range)
-                    ))
-                    drift.toValue = NSValue(point: NSPoint(
-                        x: posX + CGFloat.random(in: 2...range),
-                        y: posY + CGFloat.random(in: 2...range)
-                    ))
-                    drift.duration = Double.random(in: 3...10)
-                    drift.autoreverses = true
-                    drift.repeatCount = .infinity
-                    drift.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    bat.add(drift, forKey: "drift")
-                }
-
-                // Depth scale on hovering bats too — ~40%
-                if Double.random(in: 0...1) < 0.4 {
-                    let depth = CABasicAnimation(keyPath: "transform.scale")
-                    depth.fromValue = CGFloat.random(in: 0.88...0.97)
-                    depth.toValue = CGFloat.random(in: 1.03...1.12)
-                    depth.duration = Double.random(in: 5...12)
-                    depth.autoreverses = true
-                    depth.repeatCount = .infinity
-                    depth.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                    bat.add(depth, forKey: "depth")
-                }
-            }
-        }
-    }
-
-    /// Generates a bat silhouette CGPath with scalloped wings.
-    /// `flapPhase` 0 = wings up, 0.5 = wings down. All phases produce paths
-    /// with identical element counts so Core Animation can interpolate between them.
-    private func batSilhouettePath(wingspan: CGFloat, flapPhase: CGFloat) -> CGPath {
-        let path = CGMutablePath()
-        let half = wingspan / 2
-        let bw = wingspan * 0.06       // body half-width
-        let bh = wingspan * 0.12       // body half-height
-        let earH = wingspan * 0.055    // ear height above body top
-        let amplitude = wingspan * 0.22
-        let tipY = amplitude * cos(flapPhase * .pi * 2)
-        let dip = wingspan * 0.035     // scallop concavity depth
-
-        // Scallop finger X/Y positions (right wing; left is mirrored)
-        let s1x = half * 0.72,  s1y = tipY * 0.65
-        let s2x = half * 0.45,  s2y = tipY * 0.35
-        let s3x = half * 0.22,  s3y = tipY * 0.12
-
-        // Left wing tip
-        path.move(to: CGPoint(x: -half, y: tipY))
-
-        // Left wing leading edge → shoulder
-        path.addQuadCurve(to: CGPoint(x: -bw, y: bh * 0.4),
-                          control: CGPoint(x: -half * 0.45, y: tipY * 0.5 + bh * 0.5))
-
-        // Ears
-        path.addLine(to: CGPoint(x: -bw * 0.7, y: bh + earH))
-        path.addLine(to: CGPoint(x: -bw * 0.15, y: bh * 0.6))
-        path.addLine(to: CGPoint(x:  bw * 0.15, y: bh * 0.6))
-        path.addLine(to: CGPoint(x:  bw * 0.7,  y: bh + earH))
-
-        // Right shoulder
-        path.addLine(to: CGPoint(x: bw, y: bh * 0.4))
-
-        // Right wing leading edge → tip
-        path.addQuadCurve(to: CGPoint(x: half, y: tipY),
-                          control: CGPoint(x: half * 0.45, y: tipY * 0.5 + bh * 0.5))
-
-        // Right wing trailing edge (scalloped)
-        path.addQuadCurve(to: CGPoint(x: s1x, y: s1y - dip),
-                          control: CGPoint(x: (half + s1x) / 2, y: (tipY + s1y) / 2 - dip * 1.5))
-        path.addQuadCurve(to: CGPoint(x: s2x, y: s2y - dip),
-                          control: CGPoint(x: (s1x + s2x) / 2, y: (s1y + s2y) / 2 - dip * 1.5))
-        path.addQuadCurve(to: CGPoint(x: s3x, y: s3y - dip),
-                          control: CGPoint(x: (s2x + s3x) / 2, y: (s2y + s3y) / 2 - dip * 1.5))
-        path.addQuadCurve(to: CGPoint(x: bw * 0.5, y: -bh),
-                          control: CGPoint(x: (s3x + bw) / 2, y: -bh * 0.5 - dip))
-
-        // Body bottom
-        path.addQuadCurve(to: CGPoint(x: -bw * 0.5, y: -bh),
-                          control: CGPoint(x: 0, y: -bh * 1.2))
-
-        // Left wing trailing edge (mirror)
-        path.addQuadCurve(to: CGPoint(x: -s3x, y: s3y - dip),
-                          control: CGPoint(x: -(s3x + bw) / 2, y: -bh * 0.5 - dip))
-        path.addQuadCurve(to: CGPoint(x: -s2x, y: s2y - dip),
-                          control: CGPoint(x: -(s2x + s3x) / 2, y: (s2y + s3y) / 2 - dip * 1.5))
-        path.addQuadCurve(to: CGPoint(x: -s1x, y: s1y - dip),
-                          control: CGPoint(x: -(s1x + s2x) / 2, y: (s1y + s2y) / 2 - dip * 1.5))
-        path.addQuadCurve(to: CGPoint(x: -half, y: tipY),
-                          control: CGPoint(x: -(half + s1x) / 2, y: (tipY + s1y) / 2 - dip * 1.5))
-
-        path.closeSubpath()
-        return path
+        fogContainer.add(fadeIn, forKey: "fadeIn")
     }
 
     // MARK: - Wake Recovery
@@ -1100,7 +937,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
     /// The render server is suspended on sleep and CACurrentMediaTime() jumps
     /// forward on wake, leaving beginTime-anchored animations expired/stuck.
     private func restoreAnimationsAfterWake() {
-        // 1. Tear down and rebuild overlay windows (bats + clouds)
+        // 1. Tear down and rebuild overlay windows (fog)
         for ow in overlayWindows { ow.orderOut(nil) }
         overlayWindows.removeAll()
         if Preferences.shared.fullscreenOverlay && !isOnCompleteScreen {

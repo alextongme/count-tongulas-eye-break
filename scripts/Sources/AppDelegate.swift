@@ -64,8 +64,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         )
 
 
+        // Only auto-check for updates when running from a real .app bundle
+        // (not a dev symlink install where Sparkle can't verify signatures).
+        let isAppBundle = Bundle.main.bundlePath.hasSuffix(".app")
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: isAppBundle,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
