@@ -11,7 +11,7 @@ Every **20 minutes**, look at something **20 feet** away for **20 seconds**.
 </p>
 
 <p align="center">
-<img src="assets/screenshots/full-screen-fog.png" width="720" alt="Full screen with fog overlay">
+<img src="assets/screenshots/break-countdown.png" width="400" alt="Break countdown with moon and stars">
 </p>
 
 ---
@@ -91,31 +91,32 @@ brew uninstall count-tongulas-eye-break
 ## Screenshots
 
 <p align="center">
-<img src="assets/screenshots/full-screen-fog.png" width="720" alt="Full screen with fog overlay">
-</p>
-<p align="center"><em>Fog overlay dims your screen during a break</em></p>
-
-<p align="center">
-<img src="assets/screenshots/all-01-onboarding.png" width="400" alt="Onboarding">
+<img src="assets/screenshots/onboarding.png" width="400" alt="Onboarding">
 </p>
 <p align="center"><em>First-run onboarding</em></p>
 
 <p align="center">
-<img src="assets/screenshots/all-03-eye-prompt.png" width="360" alt="Eye break prompt">
-<img src="assets/screenshots/all-05-eye-complete.png" width="360" alt="Eye break complete">
+<img src="assets/screenshots/break-prompt.png" width="360" alt="Eye break prompt">
+<img src="assets/screenshots/break-countdown.png" width="360" alt="Eye break countdown">
 </p>
-<p align="center"><em>Eye break prompt and completion</em></p>
+<p align="center"><em>Break prompt and countdown</em></p>
 
 <p align="center">
-<img src="assets/screenshots/all-06-long-prompt.png" width="360" alt="Long break prompt">
-<img src="assets/screenshots/all-07-long-countdown.png" width="360" alt="Long break countdown">
+<img src="assets/screenshots/break-complete.png" width="360" alt="Break complete">
+<img src="assets/screenshots/history.png" width="360" alt="Break history">
 </p>
-<p align="center"><em>Long stretch break</em></p>
+<p align="center"><em>Break complete and history chart</em></p>
 
 <p align="center">
-<img src="assets/screenshots/all-02-settings.png" width="520" alt="Settings">
+<img src="assets/screenshots/settings.png" width="520" alt="Settings">
 </p>
 <p align="center"><em>Settings</em></p>
+
+<p align="center">
+<img src="assets/screenshots/reminders.png" width="360" alt="Reminders">
+<img src="assets/screenshots/bug-report.png" width="360" alt="Bug report">
+</p>
+<p align="center"><em>Reminders and bug reporting</em></p>
 
 ---
 
