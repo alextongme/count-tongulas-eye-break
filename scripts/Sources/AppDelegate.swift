@@ -53,6 +53,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         buildMenu()
         startIdleDetector()
 
+
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(preferencesDidChange),
@@ -588,4 +589,5 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         guard let bundleID = cachedExcludedBundleID else { return false }
         return Preferences.shared.excludedBundleIDs.contains(bundleID)
     }
+
 }
