@@ -1,6 +1,38 @@
 import Cocoa
 import Lottie
 
+// MARK: - Screen Blend Helper
+
+/// Converts black background to transparency: alpha = max(R,G,B) per pixel.
+/// Replicates CSS `mix-blend-mode: screen` against a black backdrop.
+func screenBlendToAlpha(_ src: CGImage) -> CGImage? {
+    let w = src.width, h = src.height
+    guard let ctx = CGContext(
+        data: nil, width: w, height: h,
+        bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    ) else { return nil }
+
+    ctx.draw(src, in: CGRect(x: 0, y: 0, width: w, height: h))
+    guard let data = ctx.data else { return nil }
+
+    let ptr = data.bindMemory(to: UInt8.self, capacity: w * h * 4)
+    for i in 0..<(w * h) {
+        let off = i * 4
+        let r = ptr[off], g = ptr[off + 1], b = ptr[off + 2]
+        let luminance = max(r, max(g, b))
+        // Set alpha to luminance; premultiply RGB
+        let a = Float(luminance) / 255.0
+        ptr[off]     = UInt8(Float(r) * a)   // R premul
+        ptr[off + 1] = UInt8(Float(g) * a)   // G premul
+        ptr[off + 2] = UInt8(Float(b) * a)   // B premul
+        ptr[off + 3] = luminance             // A
+    }
+
+    return ctx.makeImage()
+}
+
 // MARK: - Enums & Protocol
 
 enum BreakType {
@@ -100,7 +132,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
         // Main window
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: 480),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -126,12 +158,12 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         self.mascot = iv
 
         // Labels
-        self.heading      = makeLabel("", size: 22, weight: .bold, color: Drac.purple)
-        self.body         = makeLabel("", size: 17, weight: .regular, color: Drac.foreground)
-        self.detail       = makeLabel("", size: 15, weight: .medium, color: Drac.cyan)
+        self.heading      = makeLabel("", size: 18, weight: .bold, color: Drac.purple)
+        self.body         = makeLabel("", size: 14, weight: .regular, color: Drac.foreground)
+        self.detail       = makeLabel("", size: 13, weight: .medium, color: Drac.comment)
         self.countdownLbl = {
         let lbl = NSTextField(labelWithString: "")
-        lbl.font = dmMono(size: 80, weight: .medium)
+        lbl.font = dmMono(size: 56, weight: .medium)
         lbl.textColor = Drac.green
         lbl.alignment = .center
         lbl.lineBreakMode = .byWordWrapping
@@ -139,7 +171,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         lbl.translatesAutoresizingMaskIntoConstraints = false
         return lbl
     }()
-        self.countdownSub = makeLabel("", size: 14, weight: .regular, color: Drac.comment)
+        self.countdownSub = makeLabel("", size: 12, weight: .regular, color: Drac.comment)
         self.progressBar  = ProgressBarView()
 
         super.init()
@@ -149,9 +181,9 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         // Buttons
         primaryBtn = HoverButton(
             "Start Break",
-            bg: Drac.purple,
-            hover: Drac.pink,
-            fg: Drac.foreground,
+            bg: Drac.currentLine,
+            hover: Drac.selection,
+            fg: Drac.purple,
             target: self,
             action: #selector(primaryTapped)
         )
@@ -173,12 +205,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         )
 
         // Esc hint label
-        escHint = makeLabel("Press Esc to skip", size: 11, weight: .regular, color: Drac.comment)
-        escHint.alphaValue = 0.6
+        escHint = makeLabel("Press Esc to skip", size: 12, weight: .regular, color: Drac.comment)
 
         // Enter hint label (shown on complete screen)
-        enterHint = makeLabel("Press Enter to dismiss", size: 11, weight: .regular, color: Drac.comment)
-        enterHint.alphaValue = 0.6
+        enterHint = makeLabel("Press Enter to dismiss", size: 12, weight: .regular, color: Drac.comment)
         enterHint.isHidden = true
         escHint.isHidden = true
 
@@ -262,6 +292,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         guard let cv = window.contentView else { return }
         cv.wantsLayer = true
         cv.layer?.backgroundColor = Drac.background.cgColor
+        cv.layer?.cornerRadius = 10
+        cv.layer?.masksToBounds = true
 
         heading.translatesAutoresizingMaskIntoConstraints = false
         body.translatesAutoresizingMaskIntoConstraints = false
@@ -284,15 +316,15 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         for lbl in [heading, body, detail, countdownSub] {
             lbl.maximumNumberOfLines = 0
             lbl.lineBreakMode = .byWordWrapping
-            lbl.preferredMaxLayoutWidth = 396
+            lbl.preferredMaxLayoutWidth = 376
             lbl.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
 
         NSLayoutConstraint.activate([
             // Mascot
             mascot.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-            mascot.widthAnchor.constraint(equalToConstant: 110),
-            mascot.heightAnchor.constraint(equalToConstant: 110),
+            mascot.widthAnchor.constraint(equalToConstant: 80),
+            mascot.heightAnchor.constraint(equalToConstant: 80),
 
             // Heading
             heading.topAnchor.constraint(equalTo: mascot.bottomAnchor, constant: 20),
@@ -323,14 +355,14 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
             // Primary button
             primaryBtn.bottomAnchor.constraint(equalTo: dismissBtn.topAnchor, constant: -14),
-            primaryBtn.widthAnchor.constraint(equalToConstant: 160),
-            primaryBtn.heightAnchor.constraint(equalToConstant: 42),
+            primaryBtn.widthAnchor.constraint(equalToConstant: 140),
+            primaryBtn.heightAnchor.constraint(equalToConstant: 36),
 
             // Secondary button
             secondaryBtn.bottomAnchor.constraint(equalTo: dismissBtn.topAnchor, constant: -14),
             secondaryBtn.leadingAnchor.constraint(equalTo: cv.centerXAnchor, constant: 8),
-            secondaryBtn.widthAnchor.constraint(equalToConstant: 160),
-            secondaryBtn.heightAnchor.constraint(equalToConstant: 42),
+            secondaryBtn.widthAnchor.constraint(equalToConstant: 140),
+            secondaryBtn.heightAnchor.constraint(equalToConstant: 36),
 
             // Dismiss link
             dismissBtn.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
@@ -377,8 +409,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
                 spacer.bottomAnchor.constraint(equalTo: primaryBtn.topAnchor),
                 lv.centerYAnchor.constraint(equalTo: spacer.centerYAnchor, constant: -10),
                 lv.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-                lv.widthAnchor.constraint(equalToConstant: 180),
-                lv.heightAnchor.constraint(equalToConstant: 180),
+                lv.widthAnchor.constraint(equalToConstant: 140),
+                lv.heightAnchor.constraint(equalToConstant: 140),
             ])
         }
 
@@ -388,7 +420,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         primaryCenterX = primaryBtn.centerXAnchor.constraint(equalTo: cv.centerXAnchor)
     }
 
-    private let fullHeight: CGFloat = 560
+    private let fullHeight: CGFloat = 480
 
     private func resizeWindow(to height: CGFloat) {
         guard let screen = window.screen ?? NSScreen.main else { return }
@@ -405,10 +437,10 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         let countdownH = countdownLbl.intrinsicContentSize.height
         let subH = countdownSub.intrinsicContentSize.height
         let dismissH = dismissBtn.intrinsicContentSize.height
-        // mascot(110) + gap(20) + heading + gap(20) + countdown + gap(-2) + sub
-        // + gap(24) + progress(6) + gap(40) + dismiss
-        let content = 110 + 20 + headingH + 20 + countdownH + (-2) + subH + 24 + 6 + 40 + dismissH
-        return content + 90  // 45px padding top + bottom
+        // mascot(80) + gap(16) + heading + gap(16) + countdown + gap(-2) + sub
+        // + gap(20) + progress(6) + gap(32) + dismiss
+        let content = 80 + 16 + headingH + 16 + countdownH + (-2) + subH + 20 + 6 + 32 + dismissH
+        return content + 140  // 70px padding top + bottom
     }
 
     // MARK: - Animation
@@ -571,7 +603,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
             // Purple-tinted background + orange glow border
             let cv = window.contentView!
-            cv.layer?.backgroundColor = NSColor(srgbRed: 0x30/255.0, green: 0x2B/255.0, blue: 0x44/255.0, alpha: 1).cgColor
+            cv.layer?.backgroundColor = NSColor(srgbRed: 0x24/255.0, green: 0x1F/255.0, blue: 0x38/255.0, alpha: 1).cgColor
             cv.layer?.borderWidth = 2
             cv.layer?.borderColor = Drac.orange.cgColor
             cv.layer?.shadowColor = Drac.orange.cgColor
@@ -645,7 +677,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         detailTopConstraint.constant = 20
 
         let cv = window.contentView!
-        cv.layer?.backgroundColor = NSColor(srgbRed: 0x30/255.0, green: 0x2B/255.0, blue: 0x44/255.0, alpha: 1).cgColor
+        cv.layer?.backgroundColor = NSColor(srgbRed: 0x24/255.0, green: 0x1F/255.0, blue: 0x38/255.0, alpha: 1).cgColor
         cv.layer?.borderWidth = 2
         cv.layer?.borderColor = Drac.orange.cgColor
         cv.layer?.shadowColor = Drac.orange.cgColor
@@ -759,7 +791,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
                 backing: .buffered,
                 defer: false
             )
-            panel.backgroundColor = Drac.background.withAlphaComponent(0.92)
+            panel.backgroundColor = Drac.background
             panel.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue - 1)
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.isMovableByWindowBackground = false
@@ -803,12 +835,67 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         fogContainer.masksToBounds = true
         cv.layer?.addSublayer(fogContainer)
 
-        // Purple tint behind the fog (Dracula purple #BD93F9)
-        let tintLayer = CALayer()
-        tintLayer.frame = CGRect(x: 0, y: 0, width: screenW, height: h)
-        tintLayer.backgroundColor = Drac.purple.cgColor
-        tintLayer.opacity = 0.15
-        fogContainer.addSublayer(tintLayer)
+        // ── Night sky: stars + moon (matching alextong.me) ──
+
+        // Starfield — random twinkling dots
+        let starCount = 60
+        for _ in 0..<starCount {
+            let star = CALayer()
+            let radius = CGFloat.random(in: 0.4...1.6)
+            let x = CGFloat.random(in: 0...screenW)
+            let y = CGFloat.random(in: 0...h)
+            star.frame = CGRect(x: x, y: y, width: radius * 2, height: radius * 2)
+            star.cornerRadius = radius
+            star.backgroundColor = Drac.foreground.cgColor
+
+            let baseOpacity = Float.random(in: 0.3...0.8)
+            star.opacity = baseOpacity
+
+            // Twinkle animation
+            let twinkle = CAKeyframeAnimation(keyPath: "opacity")
+            let peak = min(baseOpacity + Float.random(in: 0.15...0.4), 1.0)
+            let dip = max(baseOpacity - Float.random(in: 0.1...0.3), 0.05)
+            twinkle.values = [baseOpacity, peak, baseOpacity, dip, baseOpacity].map { NSNumber(value: $0) }
+            twinkle.keyTimes = [0, 0.25, 0.5, 0.75, 1.0]
+            twinkle.duration = Double.random(in: 3...8)
+            twinkle.repeatCount = .infinity
+            twinkle.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            // Stagger start times so stars don't all pulse in sync
+            twinkle.beginTime = CACurrentMediaTime() + Double.random(in: 0...5)
+            star.add(twinkle, forKey: "twinkle")
+
+            fogContainer.addSublayer(star)
+        }
+
+        // Moon — positioned top-right with shimmer glow
+        // The moon-glow.png has a black background (designed for CSS screen blend).
+        // Convert black → transparent by setting alpha = max(R,G,B) per pixel.
+        if let moonImage = NSImage(contentsOfFile: assetPath("moon-glow.png")),
+           let moonCG = moonImage.cgImage(forProposedRect: nil, context: nil, hints: nil),
+           let processedCG = screenBlendToAlpha(moonCG) {
+            let moonSize = min(screenW, h) * 0.30
+            let moonLayer = CALayer()
+            moonLayer.frame = CGRect(
+                x: screenW * 0.80 - moonSize / 2,
+                y: h * 0.78 - moonSize / 2,
+                width: moonSize,
+                height: moonSize
+            )
+            moonLayer.contents = processedCG
+            moonLayer.contentsGravity = .resizeAspect
+            moonLayer.opacity = 0.9
+
+            // Shimmer — slow brightness pulse
+            let shimmer = CAKeyframeAnimation(keyPath: "opacity")
+            shimmer.values = [0.80, 0.92, 0.78, 0.88, 0.80].map { NSNumber(value: $0) }
+            shimmer.keyTimes = [0, 0.3, 0.5, 0.75, 1.0]
+            shimmer.duration = 7
+            shimmer.repeatCount = .infinity
+            shimmer.calculationMode = .cubic
+            moonLayer.add(shimmer, forKey: "shimmer")
+
+            fogContainer.addSublayer(moonLayer)
+        }
 
         // Each layer is 200% screen width, two fog images side by side with soft-edge masks,
         // drifting left infinitely. Different speeds + opacity pulses create depth.
@@ -993,7 +1080,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
 
     private func buildCompanion(on screen: NSScreen) -> (window: NSWindow, views: CompanionViews) {
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 460, height: fullHeight),
+            contentRect: NSRect(x: 0, y: 0, width: 440, height: fullHeight),
             styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -1012,6 +1099,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         }
         cv.wantsLayer = true
         cv.layer?.backgroundColor = Drac.background.cgColor
+        cv.layer?.cornerRadius = 10
+        cv.layer?.masksToBounds = true
 
         // Mascot
         let cMascot = NSImageView()
@@ -1020,12 +1109,12 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         cMascot.image = mascot.image
 
         // Labels
-        let cHeading      = makeLabel("", size: 22, weight: .bold, color: Drac.purple)
-        let cBody         = makeLabel("", size: 17, weight: .regular, color: Drac.foreground)
-        let cDetail        = makeLabel("", size: 15, weight: .medium, color: Drac.cyan)
+        let cHeading      = makeLabel("", size: 18, weight: .bold, color: Drac.purple)
+        let cBody         = makeLabel("", size: 14, weight: .regular, color: Drac.foreground)
+        let cDetail        = makeLabel("", size: 13, weight: .medium, color: Drac.comment)
         let cCountdownLbl: NSTextField = {
             let lbl = NSTextField(labelWithString: "")
-            lbl.font = dmMono(size: 80, weight: .medium)
+            lbl.font = dmMono(size: 56, weight: .medium)
             lbl.textColor = Drac.green
             lbl.alignment = .center
             lbl.lineBreakMode = .byWordWrapping
@@ -1033,7 +1122,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             lbl.translatesAutoresizingMaskIntoConstraints = false
             return lbl
         }()
-        let cCountdownSub = makeLabel("", size: 14, weight: .regular, color: Drac.comment)
+        let cCountdownSub = makeLabel("", size: 12, weight: .regular, color: Drac.comment)
         let cProgressBar  = ProgressBarView()
         cProgressBar.translatesAutoresizingMaskIntoConstraints = false
 
@@ -1049,7 +1138,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         // Buttons — target the same actions on self
         let cPrimaryBtn = HoverButton(
             "Start Break",
-            bg: Drac.purple, hover: Drac.pink, fg: Drac.foreground,
+            bg: Drac.currentLine, hover: Drac.selection, fg: Drac.purple,
             target: self, action: #selector(primaryTapped)
         )
         let cSecondaryBtn = HoverButton(
@@ -1062,11 +1151,9 @@ class BreakWindowController: NSObject, NSWindowDelegate {
             color: Drac.comment, hover: Drac.pink, size: 13,
             target: self, action: #selector(dismissTapped)
         )
-        let cEscHint = makeLabel("Press Esc to skip", size: 11, weight: .regular, color: Drac.comment)
-        cEscHint.alphaValue = 0.6
+        let cEscHint = makeLabel("Press Esc to skip", size: 12, weight: .regular, color: Drac.comment)
         cEscHint.isHidden = true
-        let cEnterHint = makeLabel("Press Enter to dismiss", size: 11, weight: .regular, color: Drac.comment)
-        cEnterHint.alphaValue = 0.6
+        let cEnterHint = makeLabel("Press Enter to dismiss", size: 12, weight: .regular, color: Drac.comment)
         cEnterHint.isHidden = true
 
         // Add subviews
@@ -1080,7 +1167,7 @@ class BreakWindowController: NSObject, NSWindowDelegate {
         for lbl in [cHeading, cBody, cDetail, cCountdownSub] {
             lbl.maximumNumberOfLines = 0
             lbl.lineBreakMode = .byWordWrapping
-            lbl.preferredMaxLayoutWidth = 396
+            lbl.preferredMaxLayoutWidth = 376
             lbl.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         }
 
@@ -1146,8 +1233,8 @@ class BreakWindowController: NSObject, NSWindowDelegate {
                 spacer.bottomAnchor.constraint(equalTo: cPrimaryBtn.topAnchor),
                 lv.centerYAnchor.constraint(equalTo: spacer.centerYAnchor, constant: -10),
                 lv.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-                lv.widthAnchor.constraint(equalToConstant: 180),
-                lv.heightAnchor.constraint(equalToConstant: 180),
+                lv.widthAnchor.constraint(equalToConstant: 140),
+                lv.heightAnchor.constraint(equalToConstant: 140),
             ])
         }
 

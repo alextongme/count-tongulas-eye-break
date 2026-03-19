@@ -33,9 +33,11 @@ class StatsChartWindowController: NSObject {
         guard let cv = window.contentView else { return }
         cv.wantsLayer = true
         cv.layer?.backgroundColor = Drac.background.cgColor
+        cv.layer?.cornerRadius = 10
+        cv.layer?.masksToBounds = true
 
         // Title
-        let title = makeLabel("Break History", size: 24, weight: .bold, color: Drac.purple)
+        let title = makeLabel("Break History", size: 18, weight: .bold, color: Drac.purple)
         cv.addSubview(title)
 
         // Custom segmented control

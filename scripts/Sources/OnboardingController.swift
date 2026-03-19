@@ -62,11 +62,11 @@ class OnboardingController: NSObject {
         guard let cv = window.contentView else { return }
         cv.wantsLayer = true
         cv.layer?.backgroundColor = Drac.background.cgColor
-        cv.layer?.cornerRadius = 16
+        cv.layer?.cornerRadius = 10
         cv.layer?.masksToBounds = true
 
         // ── Mascot (centered, top — clipped to circle) ──
-        let mascotSize: CGFloat = 120
+        let mascotSize: CGFloat = 90
         let mascotY = H - 36 - mascotSize
         let mascotImage = NSImageView(frame: NSRect(
             x: (W - mascotSize) / 2, y: mascotY, width: mascotSize, height: mascotSize
@@ -94,7 +94,7 @@ class OnboardingController: NSObject {
         let headingY = mascotY - 14 - headingH
         let heading = NSTextField(frame: NSRect(x: 24, y: headingY, width: W - 48, height: headingH))
         heading.stringValue = "Welcome to Count Tongula's Eye Break"
-        heading.font = dmSans(size: 20, weight: .bold)
+        heading.font = dmSans(size: 18, weight: .bold)
         heading.textColor = Drac.purple
         heading.backgroundColor = .clear
         heading.isBezeled = false
@@ -144,6 +144,7 @@ class OnboardingController: NSObject {
         intervalSlider.maxValue = 60
         intervalSlider.intValue = 20
         intervalSlider.isContinuous = true
+        intervalSlider.trackFillColor = Drac.purple
         intervalSlider.target = self
         intervalSlider.action = #selector(intervalChanged)
         cv.addSubview(intervalSlider)
@@ -165,19 +166,20 @@ class OnboardingController: NSObject {
         durationSlider.maxValue = 60
         durationSlider.intValue = 20
         durationSlider.isContinuous = true
+        durationSlider.trackFillColor = Drac.purple
         durationSlider.target = self
         durationSlider.action = #selector(durationChanged)
         cv.addSubview(durationSlider)
 
         // ── "Begin the Night Watch" button ──
         let btnW: CGFloat = 220
-        let btnH: CGFloat = 44
+        let btnH: CGFloat = 36
         let btnY = durationRowY - 32 - btnH
         let startButton = HoverButton(
             "Begin the Night Watch",
-            bg: Drac.green,
-            hover: Drac.cyan,
-            fg: Drac.background,
+            bg: Drac.currentLine,
+            hover: Drac.selection,
+            fg: Drac.green,
             target: self,
             action: #selector(getStarted)
         )

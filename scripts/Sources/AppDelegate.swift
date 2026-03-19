@@ -23,7 +23,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
     var settingsController: SettingsWindowController?
     var onboardingController: OnboardingController?
     var statsChartController: StatsChartWindowController?
+    var remindersController: RemindersWindowController?
+    var reminderWindowController: ReminderWindowController?
     var updaterController: SPUStandardUpdaterController!
+    var reminderCheckTimer: Timer?
 
     private var lastTickWasSpecial = false
 
@@ -35,6 +38,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
 
     // Menu items that open windows (disabled when another window is already open)
     var historyMenuItem: NSMenuItem!
+    var remindersMenuItem: NSMenuItem!
     var settingsMenuItem: NSMenuItem!
     var skipMenuItem: NSMenuItem!
     var bugMenuItem: NSMenuItem!
@@ -78,6 +82,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         } else {
             startTimer()
         }
+
+        startReminderChecker()
+    }
+
+    // MARK: - Reminder Checker
+
+    func startReminderChecker() {
+        reminderCheckTimer?.invalidate()
+        reminderCheckTimer = Timer.scheduledTimer(
+            timeInterval: 30.0,
+            target: self,
+            selector: #selector(checkReminders),
+            userInfo: nil,
+            repeats: true
+        )
+    }
+
+    @objc func checkReminders() {
+        ReminderStore.shared.cleanFiredCache()
+        let due = ReminderStore.shared.dueReminders()
+        guard let reminder = due.first else { return }
+        // Don't show if another window is blocking
+        guard !hasOpenWindow else { return }
+
+        ReminderStore.shared.markFired(reminder)
+
+        let controller = ReminderWindowController(reminder: reminder)
+        controller.onDismiss = { [weak self] in
+            self?.reminderWindowController = nil
+            // Fire next due reminder if any
+            let remaining = due.dropFirst()
+            for r in remaining {
+                ReminderStore.shared.markFired(r)
+            }
+        }
+        reminderWindowController = controller
     }
 
     // MARK: - Status Item
@@ -101,7 +141,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
 
         menu.addItem(NSMenuItem.separator())
 
-        statsMenuItem = menuItem(Statistics.shared.todaySummary())
+        statsMenuItem = menuItem(Statistics.shared.todaySummary(), emoji: "👁")
         statsMenuItem.isEnabled = false
         menu.addItem(statsMenuItem)
 
@@ -125,6 +165,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         menu.addItem(skipMenuItem)
 
         menu.addItem(NSMenuItem.separator())
+
+        remindersMenuItem = menuItem("Reminders...", emoji: "🔔", action: #selector(showReminders))
+        menu.addItem(remindersMenuItem)
 
         settingsMenuItem = menuItem("Settings...", emoji: "⚙️", action: #selector(showSettings))
         menu.addItem(settingsMenuItem)
@@ -185,8 +228,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
     /// Returns true if any managed window (break, settings, history, feedback) is currently visible.
     private var hasOpenWindow: Bool {
         if breakController != nil { return true }
+        if reminderWindowController != nil { return true }
         if let w = settingsController?.window, w.isVisible { return true }
         if let w = statsChartController?.window, w.isVisible { return true }
+        if let w = remindersController?.window, w.isVisible { return true }
         if let w = feedbackController?.window, w.isVisible { return true }
         if let w = onboardingController?.window, w.isVisible { return true }
         // Sparkle manages its own update windows
@@ -201,6 +246,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         }
         let blocked = hasOpenWindow
         historyMenuItem?.isEnabled = !blocked
+        remindersMenuItem?.isEnabled = !blocked
         settingsMenuItem?.isEnabled = !blocked
         skipMenuItem?.isEnabled = !blocked
         bugMenuItem?.isEnabled = !blocked
@@ -235,11 +281,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
         // during macOS space-switching animations).
 
         if isPaused {
-            if let button = statusItem.button, button.title != "⏸️ Paused" {
-                button.title = "⏸️ Paused"
+            if let button = statusItem.button, button.title != "🦇 Paused" {
+                button.title = "🦇 Paused"
             }
-            if countdownMenuItem.title != "Paused" {
-                countdownMenuItem.title = "Paused"
+            if countdownMenuItem.title != "Paused — timer stopped" {
+                countdownMenuItem.title = "Paused — timer stopped"
+                countdownMenuItem.image = emojiImage("⏸️")
             }
             lastTickWasSpecial = true
             return
@@ -249,8 +296,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
             if let button = statusItem.button, button.title != "🦇 Deferred" {
                 button.title = "🦇 Deferred"
             }
-            if countdownMenuItem.title != "Deferred (DND or locked)" {
-                countdownMenuItem.title = "Deferred (DND or locked)"
+            if countdownMenuItem.title != "Deferred — DND or screen locked" {
+                countdownMenuItem.title = "Deferred — DND or screen locked"
+                countdownMenuItem.image = emojiImage("🔒")
             }
             lastTickWasSpecial = true
             return
@@ -270,8 +318,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
             if let button = statusItem.button, button.title != "🦇 Excluded" {
                 button.title = "🦇 Excluded"
             }
-            if countdownMenuItem.title != "Paused (excluded app)" {
-                countdownMenuItem.title = "Paused (excluded app)"
+            if countdownMenuItem.title != "Excluded — app in focus" {
+                countdownMenuItem.title = "Excluded — app in focus"
+                countdownMenuItem.image = emojiImage("🚫")
             }
             lastTickWasSpecial = true
             return
@@ -292,20 +341,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
 
     func updateStatusDisplay() {
         let timeStr = formatTime(secondsUntilBreak)
-        let newTitle: String
-        if secondsUntilBreak <= 30 && secondsUntilBreak > 0 {
-            let icon = secondsUntilBreak % 2 == 0 ? "🦇" : "👁"
-            newTitle = "\(icon) \(timeStr)"
-        } else {
-            newTitle = "🦇 \(timeStr)"
-        }
-        if let button = statusItem.button, button.title != newTitle {
-            button.title = newTitle
+        let icon = (secondsUntilBreak <= 30 && secondsUntilBreak > 0)
+            ? (secondsUntilBreak % 2 == 0 ? "🦇" : "👁")
+            : "🦇"
+
+        if let button = statusItem.button {
+            let fullStr = NSMutableAttributedString()
+            let emojiAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.systemFont(ofSize: 12)
+            ]
+            let textAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
+                .baselineOffset: 0.5
+            ]
+            fullStr.append(NSAttributedString(string: "\(icon) ", attributes: emojiAttrs))
+            fullStr.append(NSAttributedString(string: timeStr, attributes: textAttrs))
+            button.attributedTitle = fullStr
         }
         let newMenu = "Next break in \(timeStr)"
         if countdownMenuItem.title != newMenu {
             countdownMenuItem.title = newMenu
         }
+        countdownMenuItem.image = emojiImage("⏳")
     }
 
     func triggerBreak() {
@@ -359,6 +416,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
                 button.title = "🦇 \(formatTime(snoozeRemaining))"
             }
             countdownMenuItem.title = "Snoozed — \(formatTime(snoozeRemaining))"
+            countdownMenuItem.image = emojiImage("💤")
 
             snoozeTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
                 guard let self = self else { timer.invalidate(); return }
@@ -426,6 +484,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, BreakWindowDelegate, NSMenuD
             statsChartController = StatsChartWindowController()
         }
         statsChartController?.window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc func showReminders() {
+        if remindersController == nil {
+            remindersController = RemindersWindowController()
+        }
+        remindersController?.window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 

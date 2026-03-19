@@ -6,11 +6,12 @@ import Cocoa
 
 // ─── Dracula Palette ────────────────────────────────────────────────
 struct Drac {
-    static let background  = NSColor(srgbRed: 0x28/255.0, green: 0x2A/255.0, blue: 0x36/255.0, alpha: 1)
-    static let currentLine = NSColor(srgbRed: 0x44/255.0, green: 0x47/255.0, blue: 0x5A/255.0, alpha: 1)
-    static let foreground  = NSColor(srgbRed: 0xF8/255.0, green: 0xF8/255.0, blue: 0xF2/255.0, alpha: 1)
+    static let background  = NSColor(srgbRed: 0x1A/255.0, green: 0x1B/255.0, blue: 0x26/255.0, alpha: 1)
+    static let currentLine = NSColor(srgbRed: 0x22/255.0, green: 0x23/255.0, blue: 0x2E/255.0, alpha: 1)
+    static let selection   = NSColor(srgbRed: 0x2D/255.0, green: 0x2F/255.0, blue: 0x3D/255.0, alpha: 1)
+    static let foreground  = NSColor(srgbRed: 0xF0/255.0, green: 0xF0/255.0, blue: 0xEC/255.0, alpha: 1)
     static let comment     = NSColor(srgbRed: 0x62/255.0, green: 0x72/255.0, blue: 0xA4/255.0, alpha: 1)
-    static let purple      = NSColor(srgbRed: 0xBD/255.0, green: 0x93/255.0, blue: 0xF9/255.0, alpha: 1)
+    static let purple      = NSColor(srgbRed: 0x9B/255.0, green: 0x87/255.0, blue: 0xD5/255.0, alpha: 1)
     static let pink        = NSColor(srgbRed: 0xFF/255.0, green: 0x79/255.0, blue: 0xC6/255.0, alpha: 1)
     static let green       = NSColor(srgbRed: 0x50/255.0, green: 0xFA/255.0, blue: 0x7B/255.0, alpha: 1)
     static let cyan        = NSColor(srgbRed: 0x8B/255.0, green: 0xE9/255.0, blue: 0xFD/255.0, alpha: 1)
@@ -223,7 +224,7 @@ class EyeBreakController: NSObject, NSWindowDelegate {
         mascot.translatesAutoresizingMaskIntoConstraints = false
 
         // ── Buttons ──
-        primaryBtn   = HoverButton("", bg: Drac.purple, hover: Drac.pink,
+        primaryBtn   = HoverButton("", bg: Drac.currentLine, hover: Drac.selection, fg: Drac.purple,
                                    target: self, action: #selector(primaryTapped))
         secondaryBtn = HoverButton("", bg: Drac.currentLine, hover: Drac.comment,
                                    target: self, action: #selector(snoozeTapped))

@@ -55,7 +55,7 @@ class SettingsWindowController: NSObject {
         win.appearance = NSAppearance(named: .darkAqua)
         win.backgroundColor = .clear
         win.isOpaque = false
-        win.isMovableByWindowBackground = false
+        win.isMovableByWindowBackground = true
         win.hasShadow = true
         win.level = .floating
         win.contentView = FirstClickView(frame: NSRect(x: 0, y: 0, width: 740, height: 740))
@@ -86,11 +86,11 @@ class SettingsWindowController: NSObject {
         guard let cv = window.contentView else { return }
         cv.wantsLayer = true
         cv.layer?.backgroundColor = Drac.background.cgColor
-        cv.layer?.cornerRadius = 16
+        cv.layer?.cornerRadius = 10
         cv.layer?.masksToBounds = true
 
         // ── Title ──
-        let title = field("Settings", size: 22, weight: .bold, color: Drac.purple)
+        let title = field("Settings", size: 18, weight: .bold, color: Drac.purple)
         title.alignment = .center
         title.frame = NSRect(x: 0, y: H - 56, width: W, height: 30)
         cv.addSubview(title)
@@ -98,7 +98,7 @@ class SettingsWindowController: NSObject {
         // ── Close button (top-right) ──
         let closeBtn = HoverLink(
             "Done",
-            color: Drac.green,
+            color: Drac.comment,
             hover: Drac.foreground,
             size: 13,
             target: self,
@@ -129,7 +129,7 @@ class SettingsWindowController: NSObject {
             target: self, action: #selector(snoozeChanged))
         y -= rowStep + 20  // Extra gap before next section
 
-        y = addHeading("Long Breaks", x: leftX, y: y, to: cv)
+        y = addHeading("Long Breaks", x: leftX, y: y, to: cv, showDivider: true)
 
         longBreakToggle = addToggleRow(
             "Enable long breaks", x: leftX, y: y, to: cv,
@@ -165,7 +165,7 @@ class SettingsWindowController: NSObject {
             target: self, action: #selector(completeSoundChanged))
         y -= rowStep + 20  // Extra gap before next section
 
-        y = addHeading("Behavior", x: rightX, y: y, to: cv)
+        y = addHeading("Behavior", x: rightX, y: y, to: cv, showDivider: true)
 
         dndToggle = addToggleRow(
             "Pause during DND", x: rightX, y: y, to: cv,
@@ -210,8 +210,8 @@ class SettingsWindowController: NSObject {
         // ── Restore Defaults button (bottom center) ──
         let restoreBtn = HoverLink(
             "Restore Defaults",
-            color: Drac.orange,
-            hover: Drac.red,
+            color: Drac.comment,
+            hover: Drac.foreground,
             size: 13,
             target: self,
             action: #selector(restoreDefaults)
@@ -225,8 +225,14 @@ class SettingsWindowController: NSObject {
     // MARK: - Row builders
 
     @discardableResult
-    private func addHeading(_ text: String, x: CGFloat, y: CGFloat, to parent: NSView) -> CGFloat {
-        let lbl = field(text, size: 15, weight: .bold, color: Drac.cyan)
+    private func addHeading(_ text: String, x: CGFloat, y: CGFloat, to parent: NSView, showDivider: Bool = false) -> CGFloat {
+        if showDivider {
+            let divider = NSView(frame: NSRect(x: x, y: y + 24, width: colW, height: 1))
+            divider.wantsLayer = true
+            divider.layer?.backgroundColor = Drac.currentLine.cgColor
+            parent.addSubview(divider)
+        }
+        let lbl = field(text, size: 13, weight: .semibold, color: Drac.comment)
         lbl.frame = NSRect(x: x, y: y, width: colW, height: 20)
         parent.addSubview(lbl)
         return y - 38
@@ -249,11 +255,12 @@ class SettingsWindowController: NSObject {
         slider.minValue = min
         slider.maxValue = max
         slider.isContinuous = true
+        slider.trackFillColor = Drac.purple
         slider.target = target
         slider.action = action
         parent.addSubview(slider)
 
-        let valLbl = field("", size: 13, color: Drac.comment)
+        let valLbl = field("", size: 13, weight: .medium, color: Drac.comment)
         valLbl.alignment = .right
         valLbl.frame = NSRect(x: x + colW - valueW, y: y, width: valueW, height: 20)
         parent.addSubview(valLbl)

@@ -42,11 +42,12 @@ func dmMono(size: CGFloat, weight: NSFont.Weight = .regular) -> NSFont {
 
 // ─── Dracula Palette ────────────────────────────────────────────────
 struct Drac {
-    static let background  = NSColor(srgbRed: 0x28/255.0, green: 0x2A/255.0, blue: 0x36/255.0, alpha: 1)
-    static let currentLine = NSColor(srgbRed: 0x44/255.0, green: 0x47/255.0, blue: 0x5A/255.0, alpha: 1)
-    static let foreground  = NSColor(srgbRed: 0xF8/255.0, green: 0xF8/255.0, blue: 0xF2/255.0, alpha: 1)
+    static let background  = NSColor(srgbRed: 0x1A/255.0, green: 0x1B/255.0, blue: 0x26/255.0, alpha: 1)
+    static let currentLine = NSColor(srgbRed: 0x22/255.0, green: 0x23/255.0, blue: 0x2E/255.0, alpha: 1)
+    static let selection   = NSColor(srgbRed: 0x2D/255.0, green: 0x2F/255.0, blue: 0x3D/255.0, alpha: 1)
+    static let foreground  = NSColor(srgbRed: 0xF0/255.0, green: 0xF0/255.0, blue: 0xEC/255.0, alpha: 1)
     static let comment     = NSColor(srgbRed: 0x62/255.0, green: 0x72/255.0, blue: 0xA4/255.0, alpha: 1)
-    static let purple      = NSColor(srgbRed: 0xBD/255.0, green: 0x93/255.0, blue: 0xF9/255.0, alpha: 1)
+    static let purple      = NSColor(srgbRed: 0x9B/255.0, green: 0x87/255.0, blue: 0xD5/255.0, alpha: 1)
     static let pink        = NSColor(srgbRed: 0xFF/255.0, green: 0x79/255.0, blue: 0xC6/255.0, alpha: 1)
     static let green       = NSColor(srgbRed: 0x50/255.0, green: 0xFA/255.0, blue: 0x7B/255.0, alpha: 1)
     static let cyan        = NSColor(srgbRed: 0x8B/255.0, green: 0xE9/255.0, blue: 0xFD/255.0, alpha: 1)
@@ -113,31 +114,56 @@ func makeLabel(
 // ─── Progress Bar ────────────────────────────────────────────────────
 class ProgressBarView: NSView {
     var progress: CGFloat = 0 {
-        didSet {
-            needsDisplay = true
-        }
+        didSet { updateFill(animated: true) }
     }
 
-    private let cornerRadius: CGFloat = 4
+    private let trackLayer = CALayer()
+    private let fillLayer = CALayer()
+    private let cr: CGFloat = 4
 
-    override func draw(_ dirtyRect: NSRect) {
-        super.draw(dirtyRect)
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
 
-        // Background track
-        let trackPath = NSBezierPath(roundedRect: bounds, xRadius: cornerRadius, yRadius: cornerRadius)
-        Drac.currentLine.setFill()
-        trackPath.fill()
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
 
-        // Foreground fill proportional to progress
-        guard progress > 0 else { return }
-        let fillWidth = bounds.width * min(max(progress, 0), 1)
-        let fillRect = NSRect(x: bounds.minX, y: bounds.minY, width: fillWidth, height: bounds.height)
+    private func setup() {
+        wantsLayer = true
 
-        // Clip to rounded track so fill doesn't bleed outside corners
-        trackPath.addClip()
-        let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: cornerRadius, yRadius: cornerRadius)
-        Drac.purple.setFill()
-        fillPath.fill()
+        trackLayer.backgroundColor = Drac.currentLine.cgColor
+        trackLayer.cornerRadius = cr
+        layer?.addSublayer(trackLayer)
+
+        fillLayer.backgroundColor = Drac.purple.cgColor
+        fillLayer.cornerRadius = cr
+        trackLayer.addSublayer(fillLayer)
+    }
+
+    override func layout() {
+        super.layout()
+        trackLayer.frame = bounds
+        updateFill(animated: false)
+    }
+
+    private func updateFill(animated: Bool) {
+        let clamped = min(max(progress, 0), 1)
+        let newFrame = CGRect(x: 0, y: 0, width: bounds.width * clamped, height: bounds.height)
+        if animated {
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.4)
+            CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeOut))
+            fillLayer.frame = newFrame
+            CATransaction.commit()
+        } else {
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            fillLayer.frame = newFrame
+            CATransaction.commit()
+        }
     }
 }
 
@@ -157,7 +183,7 @@ class HoverButton: NSButton {
         normalBg = bg; hoverBg = hover; self.fg = fg
         super.init(frame: .zero)
         isBordered = false; wantsLayer = true
-        layer?.cornerRadius = 10
+        layer?.cornerRadius = 6
         layer?.backgroundColor = normalBg.cgColor
         self.target = target; self.action = action
         translatesAutoresizingMaskIntoConstraints = false
@@ -167,7 +193,7 @@ class HoverButton: NSButton {
     func setLabel(_ text: String) {
         attributedTitle = NSAttributedString(string: text, attributes: [
             .foregroundColor: fg,
-            .font: dmSans(size: 15, weight: .semibold)
+            .font: dmSans(size: 13, weight: .semibold)
         ])
     }
 
@@ -257,7 +283,7 @@ func captureWindow(_ window: NSWindow, to path: String) {
     // Composite into an image with rounded corners applied via clipping mask
     let size = bounds.size
     guard let image = NSImage(size: size, flipped: false, drawingHandler: { rect in
-        let clipPath = NSBezierPath(roundedRect: rect, xRadius: 10, yRadius: 10)
+        let clipPath = NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8)
         clipPath.addClip()
         bitmap.draw(in: rect)
         return true

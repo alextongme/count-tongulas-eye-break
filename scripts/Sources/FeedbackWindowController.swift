@@ -69,7 +69,7 @@ class FeedbackWindowController: NSObject {
         guard let cv = window.contentView else { return }
         cv.wantsLayer = true
         cv.layer?.backgroundColor = Drac.background.cgColor
-        cv.layer?.cornerRadius = 16
+        cv.layer?.cornerRadius = 10
         cv.layer?.masksToBounds = true
 
         let pad: CGFloat = 32
@@ -85,7 +85,7 @@ class FeedbackWindowController: NSObject {
         // Title
         let title = frameLabel(
             mode == .bug ? "Report a Bug" : "Request a Feature",
-            size: 20, weight: .bold, color: mode == .bug ? Drac.red : Drac.cyan
+            size: 16, weight: .bold, color: mode == .bug ? Drac.red : Drac.cyan
         )
         title.frame = NSRect(x: pad, y: H - 50, width: contentW, height: 26)
         cv.addSubview(title)
@@ -175,10 +175,10 @@ class FeedbackWindowController: NSObject {
         y -= 16
 
         // Send button
-        let sendBtn = HoverButton("Send Report", bg: Drac.purple, hover: Drac.pink,
+        let sendBtn = HoverButton("Send Report", bg: Drac.currentLine, hover: Drac.selection, fg: Drac.purple,
                                    target: self, action: #selector(sendReport))
         sendBtn.translatesAutoresizingMaskIntoConstraints = true
-        sendBtn.frame = NSRect(x: (W - 200) / 2, y: 28, width: 200, height: 44)
+        sendBtn.frame = NSRect(x: (W - 200) / 2, y: 28, width: 200, height: 36)
         cv.addSubview(sendBtn)
     }
 

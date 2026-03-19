@@ -109,10 +109,11 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<PLIST
 PLIST
 ok "App bundle created"
 
-# ── Ad-hoc code sign ──
-info "Code signing ..."
-codesign --force --deep --sign - "$APP_BUNDLE"
-ok "Ad-hoc signed"
+# ── Code sign with Developer ID ──
+SIGN_IDENTITY="Developer ID Application: Alexander Tong (VFHH4742PD)"
+info "Code signing with Developer ID ..."
+codesign --force --deep --options runtime --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
+ok "Signed with Developer ID"
 
 # ── Create zip for distribution ──
 info "Creating zip ..."
