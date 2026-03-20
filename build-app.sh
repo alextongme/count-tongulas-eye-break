@@ -137,6 +137,26 @@ rm -rf "$DMG_TEMP"
 ok "DMG created → dist/$DMG_NAME"
 ok "DMG copied → dist/CountTongulasEyeBreak.dmg (stable download URL)"
 
+# ── Notarize ──
+APPLE_ID="${APPLE_ID:-tongsalex@gmail.com}"
+TEAM_ID="VFHH4742PD"
+info "Submitting for notarization ..."
+if [ -z "$APP_SPECIFIC_PASSWORD" ]; then
+    echo "  ⚠️  Set APP_SPECIFIC_PASSWORD env var to notarize automatically."
+    echo "     Skipping notarization."
+else
+    xcrun notarytool submit "$BUILD_DIR/$DMG_NAME" \
+        --apple-id "$APPLE_ID" \
+        --team-id "$TEAM_ID" \
+        --password "$APP_SPECIFIC_PASSWORD" \
+        --wait
+    ok "Notarization accepted"
+    info "Stapling notarization ticket ..."
+    xcrun stapler staple "$BUILD_DIR/$DMG_NAME"
+    xcrun stapler staple "$BUILD_DIR/CountTongulasEyeBreak.dmg"
+    ok "Stapled"
+fi
+
 # ── Sparkle EdDSA signature ──
 SIGN_TOOL="$REPO_DIR/.build/artifacts/sparkle/Sparkle/bin/sign_update"
 info "Signing archive for Sparkle ..."
